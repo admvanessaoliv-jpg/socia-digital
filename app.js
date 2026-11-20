@@ -16,19 +16,17 @@
   let usuaria = null; // { id, email }
   let perfil = { nome: "", email: "" };
   let dados = novosDados();
-  let uso = { hoje: 0, limite: 40 };
+  let uso = { hoje: 0, limite: 15 };
   const gerando = {};
   const erros = {};
   let chatEnviando = false;
   let modoRecuperacao = false;
-  let ebookRodando = false, ebookAtual = -1, ebookErro = "", confirmarSumario = false;
-  const capAberto = new Set();
 
-  function novosDados() { return { respostas: {}, saidas: {}, concluidas: [], checks: {}, chat: [], ebook: { capitulos: [], extras: null } }; }
+
+  function novosDados() { return { respostas: {}, saidas: {}, concluidas: [], checks: {}, chat: [] }; }
   function normalizar(d) {
     const n = novosDados();
     if (d && typeof d === "object") Object.keys(n).forEach((k) => { if (d[k] != null) n[k] = d[k]; });
-    if (!Array.isArray(n.ebook.capitulos)) n.ebook = { capitulos: [], extras: null };
     return n;
   }
 
@@ -59,7 +57,7 @@
   const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   const primeiroNome = () => (perfil.nome || "").trim().split(/\s+/)[0] || "querida";
   const hojeSP = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
-  const pct = () => Math.round((dados.concluidas.length / ETAPAS.length) * 100);
+  const pct = () => Math.round((ETAPAS.filter((e) => dados.concluidas.includes(e.id)).length / ETAPAS.length) * 100);
   const proximaEtapa = () => ETAPAS.find((e) => !dados.concluidas.includes(e.id));
   const dataBR = (iso) => { try { return new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }); } catch { return ""; } };
 
@@ -166,22 +164,12 @@
     if (corpo.ferramenta === "chat") {
       return `## Que bom que você perguntou, ${primeiroNome()}!\n\nEste é o **modo demonstração**: quando o app estiver ligado ao Supabase, aqui vai aparecer a resposta real da Sócia, usando tudo o que você já preencheu nas etapas.\n\n- Ela lembra do seu nicho, da sua cliente e da sua oferta\n- Responde dúvidas sobre conteúdo, preço, Kiwify e lançamento\n- Cria textos na hora\n\n**Seu próximo passo:** continue preenchendo a etapa em que você está.`;
     }
-    if (corpo.ferramenta === "ebook_sumario") {
-      return "1. O dia em que eu decidi recomeçar\n2. Por que a sua mente vive cansada\n3. O lugar secreto: aprendendo a parar\n4. Rotina possível para mulheres reais\n5. Quando a culpa fala mais alto\n6. Firmes daqui para frente";
-    }
-    if (corpo.ferramenta === "ebook_capitulo") {
-      const tit = String(corpo.extra || "").split(": ").slice(1).join(": ") || "Capítulo";
-      return `## ${tit}\n\nEste é um **capítulo de exemplo** do modo demonstração. Com a IA ligada, aqui entra o capítulo completo, de 1.200 a 1.800 palavras, escrito na sua voz.\n\n### O que este capítulo vai ter\n- Abertura que conversa com a dor da leitora\n- Desenvolvimento com exemplos do dia a dia\n- Um exercício prático com passo a passo\n\n[COLOQUE SUA HISTÓRIA AQUI]`;
-    }
-    if (corpo.ferramenta === "miniapp_canva") {
-      return "## Comando para o Canva Code\n\nCole este comando no Canva Code:\n\n```\nCrie um mini app de uma página, responsivo para celular, chamado \"21 Dias no Secreto\". Fundo claro, detalhes em verde...\n```\n\n**Seu próximo passo:** cole no Canva, teste no celular e publique como site.";
-    }
     const f = FERR[corpo.ferramenta] || { titulo: "Material" };
     return `## ${f.titulo}\n\nEste é um **exemplo do modo demonstração**. Com o Supabase e a chave da IA configurados, a Sócia cria aqui o material completo a partir das suas respostas${corpo.extra ? ` sobre *${corpo.extra}*` : ""}.\n\n### Como vai ficar\n1. Um diagnóstico do que você contou\n2. O material pronto para copiar e usar\n3. Ajustes sugeridos para a sua cliente ideal\n\n> Tudo fica salvo em **Meus materiais**.\n\n---\n\n**Seu próximo passo:** leia, ajuste com a sua história real e marque a etapa como concluída.`;
   }
 
   async function gerar(id) {
-    if (gerando[id]) return;
+    if (gerando[id] || bloqueio(id)) return;
     const f = FERR[id];
     const extra = f.extra ? (dados.respostas["x_" + id] || "").trim() : "";
     gerando[id] = true; delete erros[id]; atualizarFerr(id);
@@ -308,7 +296,7 @@
     const etapas = ETAPAS.map((e) => {
       const feito = dados.concluidas.includes(e.id);
       const ativo = r.nome === "etapa" && Number(r.arg) === e.id;
-      return `<a class="lat-item ${ativo ? "ativo" : ""}" href="#/etapa/${e.id}"><span class="num ${feito ? "feito" : ""}">${feito ? I.check : e.id}</span><span>${esc(e.titulo)}</span></a>`;
+      return `<a class="lat-item ${ativo ? "ativo" : ""} ${etapaLiberada(e.id) ? "" : "fechada"}" href="#/etapa/${e.id}"><span class="num ${feito ? "feito" : ""}">${feito ? I.check : e.id}</span><span>${esc(e.titulo)}</span></a>`;
     }).join("");
     return `
     <aside class="lateral">
@@ -317,7 +305,6 @@
         ${item("inicio", I.casa, "Início", r.nome === "inicio")}
         ${item("socia", I.chat, "Fale com a Sócia", r.nome === "socia")}
         ${item("materiais", I.pasta, "Meus materiais", r.nome === "materiais")}
-        ${item("ebook", I.livro, "Meu e-book", r.nome === "ebook")}
         <div class="lat-sec">O mapa · ${pct()}%</div>
         ${etapas}
       </nav>
@@ -336,7 +323,6 @@
     if (r.nome === "etapa") corpo = viewEtapa(Number(r.arg));
     else if (r.nome === "socia") corpo = viewChat();
     else if (r.nome === "materiais") corpo = viewMateriais();
-    else if (r.nome === "ebook") corpo = viewEbook();
     else if (r.nome === "conta") corpo = viewConta();
     else corpo = viewInicio();
     $app.innerHTML = `
@@ -370,7 +356,7 @@
          <div class="proximo"><a class="btn btn-pri" href="#/etapa/7">Criar mais conteúdo ${I.seta}</a><a class="btn btn-sec" href="#/socia">${I.chat} Falar com a Sócia</a></div></div>`;
     const mapa = ETAPAS.map((e) => {
       const feito = dados.concluidas.includes(e.id), atual = prox && prox.id === e.id;
-      return `<a class="mapa-item ${atual ? "atual" : ""}" href="#/etapa/${e.id}">${atual ? '<span class="selo">Agora</span>' : ""}<span class="num ${feito ? "feito" : ""}">${feito ? I.check : e.id}</span><b>${esc(e.titulo)}</b><small>${esc(e.subtitulo)}</small></a>`;
+      return `<a class="mapa-item ${atual ? "atual" : ""} ${etapaLiberada(e.id) ? "" : "fechada"}" href="#/etapa/${e.id}">${atual ? '<span class="selo">Agora</span>' : ""}<span class="num ${feito ? "feito" : ""}">${feito ? I.check : e.id}</span><b>${esc(e.titulo)}</b><small>${esc(e.subtitulo)}</small></a>`;
     }).join("");
     return `
       <div class="olho">${esc(C.NOME_CURSO)}</div>
@@ -380,7 +366,7 @@
       <div class="grade">
         <a class="atalho" href="#/socia"><span class="ic">${I.chat}</span><b>Fale com a Sócia</b><span>Dúvidas, ideias e textos na hora, já com o contexto do seu negócio.</span></a>
         <a class="atalho ouro" href="#/materiais"><span class="ic">${I.pasta}</span><b>Meus materiais</b><span>${nMat ? `${nMat} ${nMat === 1 ? "material criado" : "materiais criados"} e guardados para você.` : "Tudo o que a Sócia criar fica guardado aqui."}</span></a>
-        <a class="atalho verde" href="#/ebook"><span class="ic">${I.livro}</span><b>Meu e-book</b><span>A Sócia escreve o seu e-book inteiro, capítulo por capítulo.</span></a>
+        <a class="atalho verde" href="#/conta"><span class="ic">${I.pessoa}</span><b>Minha conta</b><span>Seu nome e quantas criações você ainda tem hoje (${Math.max(0, uso.limite - uso.hoje)} de ${uso.limite}).</span></a>
       </div>
       <div class="secao-tit"><h3>O seu mapa</h3><span class="olho" style="color:var(--suave)">${dados.concluidas.length} de ${ETAPAS.length} etapas</span></div>
       <div class="mapa">${mapa}</div>`;
@@ -393,16 +379,40 @@
     if (c.tipo === "area") input = `<textarea class="area" id="c-${c.id}" data-campo="${c.id}">${esc(v)}</textarea>`;
     else if (c.tipo === "select") input = `<select class="select" id="c-${c.id}" data-campo="${c.id}"><option value="">Escolha...</option>${c.opcoes.map((o) => `<option ${o === v ? "selected" : ""}>${esc(o)}</option>`).join("")}</select>`;
     else input = `<input class="input" id="c-${c.id}" data-campo="${c.id}" value="${esc(v)}">`;
-    return `<div class="campo ${c.tipo === "area" ? "cheia" : ""}"><label for="c-${c.id}">${esc(c.rotulo)}</label>${c.dica ? `<div class="dica">${esc(c.dica)}</div>` : ""}${input}</div>`;
+    return `<div class="campo ${c.tipo === "area" ? "cheia" : ""}"><label for="c-${c.id}">${esc(c.rotulo)}${c.obrig ? ' <span class="obrig">*</span>' : ""}</label>${c.dica ? `<div class="dica">${esc(c.dica)}</div>` : ""}${input}</div>`;
+  }
+
+  // Etapa liberada quando a anterior foi concluída
+  const etapaLiberada = (id) => id === 1 || dados.concluidas.includes(id - 1);
+  const faltando = (e) => e.campos.filter((c) => c.obrig && !String(dados.respostas[c.id] || "").trim());
+  function bloqueio(id) {
+    const f = FERR[id], e = ETAPAS.find((x) => x.id === f.etapa);
+    if (!etapaLiberada(e.id)) return `Conclua a etapa ${e.id - 1} primeiro.`;
+    const fl = faltando(e);
+    if (fl.length) return `Responda ${fl.length === 1 ? "a pergunta obrigatória" : `as ${fl.length} perguntas obrigatórias`} acima para liberar.`;
+    if (f.extra && !String(dados.respostas["x_" + id] || "").trim()) return `Escreva o tema para liberar.`;
+    return "";
+  }
+  function atualizarBotoes() {
+    const r = rota(); if (r.nome !== "etapa") return;
+    const e = ETAPAS.find((x) => x.id === Number(r.arg)); if (!e) return;
+    e.ferramentas.forEach((f) => {
+      if (gerando[f.id]) return;
+      const b = document.getElementById("b-" + f.id), m = document.getElementById("m-" + f.id);
+      const motivo = bloqueio(f.id);
+      if (b) b.disabled = !!motivo;
+      if (m) { m.textContent = motivo; m.style.display = motivo ? "" : "none"; }
+    });
   }
 
   const FRASES = ["A Sócia está pensando na sua cliente ideal...", "Organizando as ideias com carinho...", "Escrevendo na sua voz...", "Quase pronto, só os últimos detalhes..."];
 
   function ferrHTML(id) {
     const f = FERR[id], s = dados.saidas[id], g = gerando[id];
+    const motivo = g ? "" : bloqueio(id);
     const botao = g
       ? `<button class="btn btn-pri" disabled>Criando...</button>`
-      : `<button class="btn ${s ? "btn-sec" : "btn-pri"}" data-acao="gerar" data-id="${id}">${I.brilho} ${s ? "Gerar de novo" : "Gerar com a Sócia"}</button>`;
+      : `<button class="btn ${s ? "btn-sec" : "btn-pri"}" id="b-${id}" data-acao="gerar" data-id="${id}" ${motivo ? "disabled" : ""}>${I.brilho} ${s ? "Gerar de novo" : "Gerar com a Sócia"}</button>`;
     let res = "";
     if (g) res = `<div class="ferr-res"><div class="pensando"><span class="pontos"><i></i><i></i><i></i></span><span data-frase>${FRASES[0]}</span></div></div>`;
     else if (s) res = `<div class="ferr-res"><div class="ferr-acoes"><span class="quando">Criado em ${dataBR(s.em)}${s.extra ? ` · ${esc(s.extra)}` : ""}</span>
@@ -412,6 +422,7 @@
         <div class="texto-ia" id="t-${id}">${md(s.texto)}</div></div>`;
     return `<div class="ferr" id="f-${id}">
       <div class="ferr-cab"><span class="ic">${I.brilho}</span><div class="txt"><b>${esc(f.titulo)}</b><span>${esc(f.descricao)}</span></div>${botao}</div>
+      <div class="motivo" id="m-${id}" ${motivo ? "" : 'style="display:none"'}>${esc(motivo)}</div>
       ${f.extra ? `<div class="ferr-extra"><div class="campo"><label for="x-${id}">${esc(f.extra.rotulo)}</label><input class="input" id="x-${id}" data-campo="x_${id}" placeholder="${esc(f.extra.placeholder)}" value="${esc(dados.respostas["x_" + id] || "")}"></div></div>` : ""}
       ${erros[id] ? `<div class="erro-ia">${esc(erros[id])}</div>` : ""}
       ${res}</div>`;
@@ -425,137 +436,30 @@
     const e = ETAPAS.find((x) => x.id === n);
     if (!e) { location.hash = "#/inicio"; return ""; }
     const feito = dados.concluidas.includes(e.id);
+    const liberada = etapaLiberada(e.id);
+    const principal = e.ferramentas[0].id;
+    const podeConcluir = !!dados.saidas[principal];
     const checks = dados.checks[e.id] || [];
     const ant = ETAPAS.find((x) => x.id === n - 1), prox = ETAPAS.find((x) => x.id === n + 1);
+    let passo = 0;
+    const tituloPasso = (t, d) => `<div class="passo-tit"><span class="passo">${++passo}</span><div><b>${t}</b>${d ? `<small>${d}</small>` : ""}</div></div>`;
     return `
-      <div class="etapa-topo"><div><div class="olho">Etapa ${e.id} de ${ETAPAS.length}</div><h1 class="titulo">${esc(e.titulo)}</h1><p class="lead">${esc(e.subtitulo)}. ${esc(e.intro)}</p></div></div>
-      ${e.campos.length ? `<section class="cartao"><div class="cartao-cab"><span class="ic">${ICONE_ETAPA[e.id]}</span><div><h4>Suas respostas</h4><p class="desc">A Sócia usa estas respostas em tudo o que cria. <span class="salvo" id="salvo"></span></p></div></div>
-        <div class="duas">${e.campos.map(campoHTML).join("")}</div></section>` : ""}
-      ${e.ebook ? `<div class="faixa-ebook"><span class="ic" style="color:var(--ciano)">${I.livro}</span><div class="txt"><b>Vai criar um e-book?</b><span>Na página Meu e-book, a Sócia escreve o livro inteiro: sumário, capítulos, capa, introdução e conclusão.</span></div><a class="btn btn-sec" href="#/ebook">Abrir Meu e-book ${I.seta}</a></div>` : ""}
+      <div class="etapa-topo"><div><div class="olho">Etapa ${e.id} de ${ETAPAS.length}</div><h1 class="titulo">${esc(e.titulo)}</h1><p class="lead">${esc(e.intro)}</p></div></div>
+      ${!liberada ? `<div class="aviso-trava">${I.lista}<div><b>Esta etapa ainda está fechada.</b><span>Termine a etapa ${e.id - 1} (${esc(ant.titulo)}) e marque como concluída para liberar.</span></div><a class="btn btn-sec" href="#/etapa/${e.id - 1}">Ir para a etapa ${e.id - 1}</a></div>` : ""}
+      ${e.campos.length ? `${tituloPasso("Responda", "A Sócia usa estas respostas em tudo o que cria. O * indica as obrigatórias.")}
+        <section class="cartao"><div class="duas">${e.campos.map(campoHTML).join("")}</div><span class="salvo" id="salvo"></span></section>` : ""}
+      ${tituloPasso("Gere com a Sócia", e.ferramentas.length > 1 ? "Comece pela primeira; as outras completam." : "")}
       ${e.ferramentas.map((f) => ferrHTML(f.id)).join("")}
-      ${e.checklist ? `<section class="cartao"><div class="cartao-cab"><span class="ic">${I.lista}</span><div><h4>Checklist da etapa</h4><p class="desc">Marque o que você já fez.</p></div></div>
-        <ul class="checklist">${e.checklist.map((c, i) => `<li class="${checks.includes(i) ? "ok" : ""}" data-acao="check" data-etapa="${e.id}" data-i="${i}"><span class="caixa">${checks.includes(i) ? I.check : ""}</span><span>${esc(c)}</span></li>`).join("")}</ul></section>` : ""}
+      ${e.checklist ? `${tituloPasso("Coloque em prática", "Marque o que você já fez.")}
+        <section class="cartao"><ul class="checklist">${e.checklist.map((c, i) => `<li class="${checks.includes(i) ? "ok" : ""}" data-acao="check" data-etapa="${e.id}" data-i="${i}"><span class="caixa">${checks.includes(i) ? I.check : ""}</span><span>${esc(c)}</span></li>`).join("")}</ul></section>` : ""}
       <div class="concluir ${feito ? "feito" : ""}">
-        <div><b>${feito ? "Etapa concluída ✓" : "Terminou esta etapa?"}</b><p>${feito ? "Você pode voltar aqui quando quiser para ajustar ou gerar mais." : "Marque como concluída para avançar no seu mapa."}</p></div>
-        <button class="btn ${feito ? "btn-sec" : "btn-pri"}" data-acao="concluir" data-etapa="${e.id}">${feito ? "Desmarcar" : "Marcar como concluída"}</button>
+        <div><b>${feito ? "Etapa concluída ✓" : "Terminou esta etapa?"}</b><p>${feito ? "Você pode voltar aqui quando quiser para ajustar." : podeConcluir ? (prox ? `Marque como concluída para liberar a etapa ${prox.id}.` : "Marque como concluída para finalizar o seu mapa.") : `Gere o “${esc(e.ferramentas[0].titulo)}” para poder concluir.`}</p></div>
+        <button class="btn ${feito ? "btn-sec" : "btn-pri"}" data-acao="concluir" data-etapa="${e.id}" ${!feito && !podeConcluir ? "disabled" : ""}>${feito ? "Desmarcar" : "Marcar como concluída"}</button>
       </div>
       <div class="nav-etapas">
         ${ant ? `<a class="btn btn-leve" href="#/etapa/${ant.id}">${I.voltar} ${esc(ant.titulo)}</a>` : "<span></span>"}
         ${prox ? `<a class="btn btn-leve" href="#/etapa/${prox.id}">${esc(prox.titulo)} ${I.seta}</a>` : ""}
       </div>`;
-  }
-
-  // ------------------------------------------------------------------ Meu e-book
-  function tituloEbook() { return (dados.respostas.nome_produto || "").trim() || "Meu e-book"; }
-  function textoEbook() {
-    const eb = dados.ebook, caps = eb.capitulos;
-    let t = `# ${tituloEbook()}\n\n`;
-    if (eb.extras?.texto) t += `${eb.extras.texto}\n\n---\n\n`;
-    t += `## Sumário\n${caps.map((c, i) => `${i + 1}. ${c.titulo}`).join("\n")}\n\n---\n\n`;
-    t += caps.filter((c) => c.texto).map((c) => c.texto).join("\n\n---\n\n");
-    return t;
-  }
-
-  async function ebookSumario() {
-    const temTexto = dados.ebook.capitulos.some((c) => c.texto);
-    if (temTexto && !confirmarSumario) { confirmarSumario = true; return render(); }
-    confirmarSumario = false;
-    if (gerando.ebook_sumario || ebookRodando) return;
-    gerando.ebook_sumario = true; ebookErro = ""; render();
-    try {
-      const t = await chamarIA({ ferramenta: "ebook_sumario" });
-      const tits = t.split("\n").map((l) => l.trim().match(/^\d+\s*[.)\-–:]?\s*(.+)$/)).filter(Boolean)
-        .map((m) => m[1].replace(/\*+/g, "").replace(/^#+\s*/, "").trim()).filter(Boolean).slice(0, 12);
-      if (!tits.length) throw new Error("Não consegui montar o sumário. Tente de novo.");
-      dados.ebook.capitulos = tits.map((titulo) => ({ titulo, texto: "", em: "" }));
-      capAberto.clear();
-      await salvarAgora();
-    } catch (e) { ebookErro = e.message; }
-    gerando.ebook_sumario = false; render();
-  }
-
-  async function escreverCap(i) {
-    const caps = dados.ebook.capitulos, c = caps[i];
-    if (!c || !c.titulo.trim()) return false;
-    ebookAtual = i; ebookErro = ""; render();
-    try {
-      const t = await chamarIA({ ferramenta: "ebook_capitulo", extra: `Capítulo ${i + 1} de ${caps.length}: ${c.titulo}`, indice: i });
-      c.texto = t; c.em = new Date().toISOString();
-      await salvarAgora();
-      return true;
-    } catch (e) { ebookErro = e.message; return false; }
-    finally { ebookAtual = -1; render(); }
-  }
-
-  async function escreverTodos() {
-    if (ebookRodando) return;
-    ebookRodando = true; ebookErro = "";
-    const caps = dados.ebook.capitulos;
-    for (let i = 0; i < caps.length; i++) {
-      if (!ebookRodando) break;
-      if (caps[i].texto) continue;
-      if (!(await escreverCap(i))) break;
-    }
-    const terminou = caps.length && caps.every((c) => c.texto);
-    ebookRodando = false; render();
-    if (terminou) toast("Todos os capítulos estão escritos! 📖");
-  }
-
-  async function ebookExtras() {
-    if (gerando.ebook_extras) return;
-    gerando.ebook_extras = true; ebookErro = ""; render();
-    try {
-      const t = await chamarIA({ ferramenta: "ebook_extras" });
-      dados.ebook.extras = { texto: t, em: new Date().toISOString() };
-      await salvarAgora();
-    } catch (e) { ebookErro = e.message; }
-    gerando.ebook_extras = false; render();
-  }
-
-  function viewEbook() {
-    const eb = dados.ebook, caps = eb.capitulos;
-    const feitos = caps.filter((c) => c.texto).length, faltam = caps.length - feitos;
-    const ocupado = ebookRodando || ebookAtual >= 0 || gerando.ebook_sumario;
-    const temEstrutura = !!dados.saidas.estrutura_produto;
-    const listaCaps = caps.map((c, i) => {
-      const st = ebookAtual === i ? '<span class="cap-st vai">Escrevendo...</span>' : c.texto ? '<span class="cap-st ok">Pronto</span>' : '<span class="cap-st falta">Falta</span>';
-      return `<li><div class="cap"><span class="num ${c.texto ? "feito" : ""}">${c.texto ? I.check : i + 1}</span>
-        <input class="input" data-ebook-tit="${i}" value="${esc(c.titulo)}" ${ocupado ? "disabled" : ""} aria-label="Título do capítulo ${i + 1}">
-        ${st}
-        ${c.texto ? `<button class="btn-leve" data-acao="cap-ver" data-i="${i}">${capAberto.has(i) ? "Fechar" : "Ver"}</button>` : ""}
-        <button class="btn-leve" data-acao="cap-escrever" data-i="${i}" ${ocupado ? "disabled" : ""}>${c.texto ? "Reescrever" : "Escrever"}</button>
-        <button class="btn-leve" data-acao="cap-remover" data-i="${i}" ${ocupado ? "disabled" : ""} title="Remover capítulo" aria-label="Remover capítulo">✕</button></div>
-        ${c.texto && capAberto.has(i) ? `<div class="cap-texto"><div class="ferr-acoes"><span class="quando">${dataBR(c.em)}</span><button class="btn-leve" data-acao="cap-copiar" data-i="${i}">${I.copiar} Copiar</button></div><div class="texto-ia">${md(c.texto)}</div></div>` : ""}</li>`;
-    }).join("");
-    const pctLivro = caps.length ? Math.round((feitos / caps.length) * 100) : 0;
-    return `<div class="olho">Criação</div><h1 class="titulo">Meu <em>e-book</em></h1>
-      <p class="lead" style="margin-bottom:28px">A Sócia escreve o seu e-book inteiro, na sua voz: primeiro o sumário, depois cada capítulo e, por fim, a capa, a introdução e a conclusão. Cada capítulo usa 1 criação do seu limite diário (hoje: ${uso.hoje} de ${uso.limite}).</p>
-      ${ebookErro ? `<div class="erro-ia" style="border-radius:12px;margin-bottom:20px">${esc(ebookErro)}</div>` : ""}
-      ${!temEstrutura && !caps.length ? `<div class="faixa-ebook"><div class="txt"><b>Dica: faça antes a Estrutura do Produto</b><span>Com a estrutura pronta (Etapa 3), o sumário do e-book sai muito mais certeiro.</span></div><a class="btn btn-sec" href="#/etapa/3">Ir para a Etapa 3</a></div>` : ""}
-
-      <section class="cartao"><div class="cartao-cab"><span class="passo">1</span><div><h4>Sumário</h4><p class="desc">A Sócia monta os capítulos a partir da sua estrutura. Você pode editar os títulos.</p></div></div>
-        ${gerando.ebook_sumario ? `<div class="pensando" style="padding:6px 0"><span class="pontos"><i></i><i></i><i></i></span><span>Montando o sumário...</span></div>` : ""}
-        ${caps.length ? `<ul class="caps">${listaCaps}</ul>` : ""}
-        <div class="linha-acoes">
-          <button class="btn ${caps.length ? "btn-sec" : "btn-pri"}" data-acao="ebook-sumario" ${ocupado ? "disabled" : ""}>${I.brilho} ${confirmarSumario ? "Clique de novo: isso apaga os capítulos escritos" : caps.length ? "Refazer sumário" : "Criar sumário com a Sócia"}</button>
-          ${caps.length && caps.length < 12 ? `<button class="btn btn-leve" data-acao="cap-add" ${ocupado ? "disabled" : ""}>+ Adicionar capítulo</button>` : ""}
-        </div></section>
-
-      ${caps.length ? `<section class="cartao"><div class="cartao-cab"><span class="passo">2</span><div><h4>Capítulos</h4><p class="desc">${feitos} de ${caps.length} escritos. A Sócia escreve um por vez e continua de onde o anterior parou.</p></div></div>
-        <div class="barra"><i style="width:${pctLivro}%"></i></div>
-        <div class="linha-acoes">
-          ${ebookRodando ? `<button class="btn btn-sec" data-acao="ebook-pausar">Pausar depois deste capítulo</button>`
-            : faltam ? `<button class="btn btn-pri" data-acao="ebook-todos" ${ocupado ? "disabled" : ""}>${I.brilho} Escrever ${faltam === caps.length ? "todos os capítulos" : `os ${faltam} que faltam`}</button>` : `<span class="salvo">${I.check} Todos os capítulos prontos</span>`}
-        </div>
-        ${ebookRodando ? `<p class="desc" style="margin-top:12px">Pode deixar esta página aberta: leva cerca de 1 minuto por capítulo.</p>` : ""}</section>` : ""}
-
-      ${caps.length ? `<div class="ferr"><div class="ferr-cab"><span class="passo">3</span><div class="txt"><b>Capa, introdução e finalização</b><span>Título e subtítulo, contracapa, dedicatória, introdução, conclusão, sobre a autora e como diagramar no Canva.</span></div>
-        ${gerando.ebook_extras ? `<button class="btn btn-pri" disabled>Criando...</button>` : `<button class="btn ${eb.extras ? "btn-sec" : "btn-pri"}" data-acao="ebook-extras">${I.brilho} ${eb.extras ? "Gerar de novo" : "Gerar com a Sócia"}</button>`}</div>
-        ${gerando.ebook_extras ? `<div class="ferr-res"><div class="pensando"><span class="pontos"><i></i><i></i><i></i></span><span data-frase>${FRASES[0]}</span></div></div>` : ""}
-        ${eb.extras && !gerando.ebook_extras ? `<div class="ferr-res"><div class="ferr-acoes"><span class="quando">Criado em ${dataBR(eb.extras.em)}</span><button class="btn-leve" data-acao="extras-copiar">${I.copiar} Copiar</button><button class="btn-leve" data-acao="extras-expandir">${I.expandir} Ver tudo</button></div><div class="texto-ia" id="t-extras">${md(eb.extras.texto)}</div></div>` : ""}</div>` : ""}
-
-      ${feitos ? `<section class="cartao"><div class="cartao-cab"><span class="passo">4</span><div><h4>Seu e-book completo</h4><p class="desc">Copie ou baixe tudo de uma vez e cole no Canva para diagramar. ${faltam ? `Ainda faltam ${faltam} capítulo(s).` : ""}</p></div></div>
-        <div class="linha-acoes"><button class="btn btn-pri" data-acao="ebook-copiar">${I.copiar} Copiar e-book inteiro</button><button class="btn btn-sec" data-acao="ebook-baixar">${I.baixar} Baixar (.txt)</button><a class="btn btn-leve" href="#/etapa/6">Próximo: página de vendas ${I.seta}</a></div></section>` : ""}`;
   }
 
   // ------------------------------------------------------------------ Chat
@@ -639,19 +543,6 @@
         return;
       }
       case "copiar-bloco": return copiar(el.closest(".bloco-cod")?.querySelector("pre")?.textContent || "");
-      case "ebook-sumario": return ebookSumario();
-      case "ebook-todos": return escreverTodos();
-      case "ebook-pausar": ebookRodando = false; toast("Vou parar depois deste capítulo."); return render();
-      case "ebook-extras": return ebookExtras();
-      case "ebook-copiar": return copiar(textoEbook());
-      case "ebook-baixar": return baixar(slug(tituloEbook()) || "meu-ebook", textoEbook());
-      case "extras-copiar": return copiar(dados.ebook.extras?.texto || "");
-      case "extras-expandir": { const t = document.getElementById("t-extras"); if (t) t.classList.toggle("aberto"); return; }
-      case "cap-escrever": { if (ebookRodando) return; const i = Number(el.dataset.i); await escreverCap(i); capAberto.add(i); return render(); }
-      case "cap-ver": { const i = Number(el.dataset.i); capAberto.has(i) ? capAberto.delete(i) : capAberto.add(i); return render(); }
-      case "cap-copiar": return copiar(dados.ebook.capitulos[Number(el.dataset.i)]?.texto || "");
-      case "cap-remover": { dados.ebook.capitulos.splice(Number(el.dataset.i), 1); capAberto.clear(); salvar(); return render(); }
-      case "cap-add": { dados.ebook.capitulos.push({ titulo: "Novo capítulo", texto: "", em: "" }); salvar(); return render(); }
       case "enviar": return enviarChat();
       case "sugestao": { const t = document.getElementById("chat-texto"); t.value = el.dataset.txt; return enviarChat(); }
       case "limpar-chat": dados.chat = []; salvar(); return render();
@@ -677,14 +568,18 @@
 
   let timerSalvo = null;
   document.addEventListener("input", (ev) => {
-    const tit = ev.target.closest("[data-ebook-tit]");
-    if (tit) { const c = dados.ebook.capitulos[Number(tit.dataset.ebookTit)]; if (c) { c.titulo = tit.value; salvar(); } return; }
     const el = ev.target.closest("[data-campo]");
     if (!el) return;
     dados.respostas[el.dataset.campo] = el.value;
     salvar();
+    atualizarBotoes();
     const s = document.getElementById("salvo");
     if (s) { s.textContent = "Salvando..."; clearTimeout(timerSalvo); timerSalvo = setTimeout(() => { s.innerHTML = `${I.check} Salvo`; }, 900); }
+  });
+
+  document.addEventListener("change", (ev) => {
+    const el = ev.target.closest("select[data-campo]");
+    if (el) { dados.respostas[el.dataset.campo] = el.value; salvar(); atualizarBotoes(); }
   });
 
   document.addEventListener("keydown", (ev) => {
