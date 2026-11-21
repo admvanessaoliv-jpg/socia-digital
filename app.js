@@ -180,17 +180,17 @@
       return `## Que bom que você perguntou, ${primeiroNome()}!\n\nEste é o **modo demonstração**: quando o app estiver ligado ao Supabase, aqui vai aparecer a resposta real da Sócia, usando o seu nicho e o seu produto.\n\n- Ela lembra do seu nicho, da sua cliente e da sua oferta\n- Responde dúvidas sobre conteúdo, preço, Kiwify e lançamento\n- Cria textos na hora\n\nEscolha uma ferramenta no Início e teste.`;
     }
     if (corpo.ferramenta === "persona") return "## Quem é ela\nAna, 34 anos, mãe de 2, trabalha fora e chega exausta. (Exemplo do modo demonstração.)\n## O que ela sente\n- “Eu não dou conta de tudo”\n## O que ela deseja\n- Paz em casa";
-    if (corpo.ferramenta === "ajustes_perfil") return "## Nome do perfil\n- Ana Souza | Rotina para Mães\n## Bio\n- Para a mãe que vive cansada / Rotina leve com fé / 👇🏻 Comece aqui\n(Exemplo do modo demonstração.)";
-    if (corpo.ferramenta === "blueprint") return "## O produto\n⭐ 21 Noites em Paz: e-book com exercícios.\n## O método e o mecanismo único\nMétodo PAZ: Parar, Agradecer, Zerar.\n## Estrutura completa\n1. Noite 1: ...\n## Layout e diagramação\nCores #F4EDE4, #2F5D50, #D9B26F.\n## Comando para criar no Claude\n```\nVocê é uma escritora cristã... (exemplo do modo demonstração)\n```";
+    if (corpo.ferramenta === "ajustes_perfil") return "## Nome do perfil\n- Ana Souza | Rotina para Mães\n## Bio\n- Para a mãe que vive cansada / Receitas naturais em 20 minutos / 👇🏻 Comece aqui\n(Exemplo do modo demonstração.)";
+    if (corpo.ferramenta === "blueprint") return "## O produto\n⭐ 30 Receitas Naturais para Lancheira: e-book com cardápio.\n## O método e o mecanismo único\nMétodo Lancheira em 10 Minutos: Planejar, Preparar, Montar.\n## Estrutura completa\n1. Noite 1: ...\n## Layout e diagramação\nCores #F4EDE4, #2F5D50, #D9B26F.\n## Comando para criar no Claude\n```\nVocê é uma especialista em receitas naturais... (exemplo do modo demonstração)\n```";
     if (corpo.ferramenta === "nicho" || corpo.ferramenta === "ideias_produto" || corpo.ferramenta === "analisar_ideia" || corpo.ferramenta === "produtos_virais") {
-      const n = !["ideias_produto", "produtos_virais"].includes(corpo.ferramenta) ? ["Mães que querem voltar a orar", "Mulheres ansiosas que buscam paz", "Esposas que querem organizar a casa"] : ["E-book: 21 Dias no Secreto", "Desafio: 7 Dias de Paz", "Minicurso: Rotina de Oração Real"];
+      const n = !["ideias_produto", "produtos_virais"].includes(corpo.ferramenta) ? ["Mães que querem lanches naturais", "Mulheres que querem desinchar", "Famílias que gastam muito no mercado"] : ["30 Receitas Naturais para Lancheira", "Desafio 7 Dias Sem Açúcar", "Minicurso Marmita da Semana em 2 Horas"];
       return `Este é um exemplo do modo demonstração.\n\n${n.map((t, i) => `### OPÇÃO ${i + 1}: ${t}\n**Para quem:** exemplo de cliente.\n**A dor que você resolve:** exemplo de dor.\n**Por que você:** exemplo.`).join("\n\n")}\n\n## Minha recomendação\nComece pela opção 1: é a que mais combina com a sua história.`;
     }
     if (corpo.ferramenta === "raio_x") {
       return `## Nota do perfil: 6/10\nExemplo do modo demonstração (${(corpo.imagens || []).length} print(s) recebido(s)). Com a IA ligada, a Sócia lê os seus prints de verdade.\n\n## O que está travando\n- A bio não diz para quem é nem qual a promessa\n- As capas não usam as fórmulas que param a rolagem\n\n## O que está funcionando\n- Os posts com passo a passo tiveram mais alcance\n\n## Ajustes de hoje\n- Nova bio...\n\n## Conteúdos da semana\n- Carrossel: Durante 7 noites...`;
     }
     if (corpo.ferramenta === "carrossel") {
-      const sl = [["Durante 7 noites, faça isto antes de dormir", "e veja a sua casa mudar"], ["Desligue o celular 30 minutos antes", "A sua mente precisa de silêncio para descansar de verdade."], ["Escreva 3 coisas boas do dia", "Gratidão muda o foco do que falta para o que você já tem."], ["Ore pelo nome de cada filho", "Coloque diante de Deus o que você não consegue resolver sozinha."], ["Prepare o dia seguinte", "Separe a roupa e a lista: amanhã começa mais leve."], ["Durma no mesmo horário", "Rotina simples é o que sustenta a mudança."], ["Quer a jornada completa de 21 noites?", "Está tudo no meu guia. Clique no link da bio."]];
+      const sl = [["Durante 7 noites, faça isto antes de dormir", "e veja a sua casa mudar"], ["Desligue o celular 30 minutos antes", "A sua mente precisa de silêncio para descansar de verdade."], ["Escreva 3 coisas boas do dia", "Gratidão muda o foco do que falta para o que você já tem."], ["Planeje a lancheira de amanhã", "Separe as frutas e os potes antes de dormir."], ["Prepare o dia seguinte", "Separe a roupa e a lista: amanhã começa mais leve."], ["Durma no mesmo horário", "Rotina simples é o que sustenta a mudança."], ["Quer a jornada completa de 21 noites?", "Está tudo no meu guia. Clique no link da bio."]];
       return sl.map(([t, x], i) => `### SLIDE ${i + 1}\nTÍTULO: ${t}\nTEXTO: ${x}`).join("\n") + "\n### LEGENDA\nSalve este post e comece hoje à noite. Qual dessas você vai fazer primeiro? #rotina #fé #mulhercristã";
     }
     if (corpo.ferramenta === "pagina_vendas") {
@@ -536,10 +536,10 @@
   }
 
   const FORMULAS = [
-    ["Prazo + direção + área", "“Durante 7 noites, faça X pela sua Y”"],
-    ["Chamada pela identidade", "“Mãe, não durma sem...” / “Esposa, antes de discutir...”"],
-    ["Número + resultado", "“3 hábitos que mudaram a minha manhã”"],
-    ["Direção clara", "“Faça isso hoje, antes de dormir: ...”"],
+    ["Prazo + direção + área", "“Durante 7 dias, tome este suco antes do café para desinchar”"],
+    ["Chamada pela identidade", "“Mãe, não dê este lanche antes da escola”"],
+    ["Número + resultado", "“3 jantares com o que sobrou na geladeira”"],
+    ["Direção clara", "“Faça isso hoje, antes de pagar qualquer conta”"],
   ];
   const EVITAR = [
     "Capa que só faz sentido para quem já conhece a história",
@@ -548,7 +548,7 @@
     "Pitch sem promessa forte: sem promessa forte não vende",
   ];
   function formulasHTML() {
-    return `<section class="cartao formulas"><div class="cartao-cab"><span class="ic">${I.brilho}</span><div><h4>As fórmulas de capa da Vanessa</h4><p class="desc">O que fez o perfil dela vender: carrossel com capa que para a rolagem e convite no último slide.</p></div></div>
+    return `<section class="cartao formulas"><div class="cartao-cab"><span class="ic">${I.brilho}</span><div><h4>As fórmulas de capa da Vanessa</h4><p class="desc">A estrutura que fez o perfil dela vender, para usar no SEU nicho: capa que para a rolagem e convite no último slide.</p></div></div>
       <div class="duas"><div><b class="f-tit">Use</b><ul class="f-lista">${FORMULAS.map(([n, ex]) => `<li><b>${n}</b><span>${ex}</span></li>`).join("")}</ul></div>
       <div><b class="f-tit">Evite</b><ul class="f-lista evitar">${EVITAR.map((t) => `<li>${t}</li>`).join("")}</ul></div></div></section>`;
   }
