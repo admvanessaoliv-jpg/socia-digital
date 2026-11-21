@@ -26,14 +26,20 @@
   let modoRecuperacao = false;
   let confirmarReset = false;
   let prints = [];
-  let espiarFunil = false; // imagens do Raio-X (ficam só na tela, não são salvas)
+  let espiarFunil = false;
+  const autoFeito = new Set();
+  // Quando as respostas da Clareza mudam, os produtos e o plano antigos deixam de valer
+  const DEPENDE = { produtos_virais: ["blueprint", "ajustes_perfil"], blueprint: ["ajustes_perfil"] };
+  function limparDepois(ids) {
+    ids.forEach((id) => { delete dados.saidas[id]; autoFeito.delete(id); });
+  } // imagens do Raio-X (ficam só na tela, não são salvas)
 
 
-  function novosDados() { return { respostas: {}, saidas: {}, checks: {}, chat: [], jornada: { passo: "tem_insta", trilha: [], funil: false } }; }
+  function novosDados() { return { respostas: {}, saidas: {}, checks: {}, chat: [], jornada: { passo: "q1", trilha: [], funil: false } }; }
   function normalizar(d) {
     const n = novosDados();
     if (d && typeof d === "object") Object.keys(n).forEach((k) => { if (d[k] != null) n[k] = d[k]; });
-    if (!n.jornada || !n.jornada.passo) n.jornada = { passo: "tem_insta", trilha: [], funil: false };
+    if (!n.jornada || !(window.JORNADA || []).some((p) => p.id === n.jornada.passo)) n.jornada = { passo: "q1", trilha: [], funil: !!n.jornada?.funil };
     return n;
   }
 
@@ -176,8 +182,8 @@
     if (corpo.ferramenta === "persona") return "## Quem é ela\nAna, 34 anos, mãe de 2, trabalha fora e chega exausta. (Exemplo do modo demonstração.)\n## O que ela sente\n- “Eu não dou conta de tudo”\n## O que ela deseja\n- Paz em casa";
     if (corpo.ferramenta === "ajustes_perfil") return "## Nome do perfil\n- Ana Souza | Rotina para Mães\n## Bio\n- Para a mãe que vive cansada / Rotina leve com fé / 👇🏻 Comece aqui\n(Exemplo do modo demonstração.)";
     if (corpo.ferramenta === "blueprint") return "## O produto\n⭐ 21 Noites em Paz: e-book com exercícios.\n## O método e o mecanismo único\nMétodo PAZ: Parar, Agradecer, Zerar.\n## Estrutura completa\n1. Noite 1: ...\n## Layout e diagramação\nCores #F4EDE4, #2F5D50, #D9B26F.\n## Comando para criar no Claude\n```\nVocê é uma escritora cristã... (exemplo do modo demonstração)\n```";
-    if (corpo.ferramenta === "nicho" || corpo.ferramenta === "ideias_produto" || corpo.ferramenta === "analisar_ideia") {
-      const n = corpo.ferramenta !== "ideias_produto" ? ["Mães que querem voltar a orar", "Mulheres ansiosas que buscam paz", "Esposas que querem organizar a casa"] : ["E-book: 21 Dias no Secreto", "Desafio: 7 Dias de Paz", "Minicurso: Rotina de Oração Real"];
+    if (corpo.ferramenta === "nicho" || corpo.ferramenta === "ideias_produto" || corpo.ferramenta === "analisar_ideia" || corpo.ferramenta === "produtos_virais") {
+      const n = !["ideias_produto", "produtos_virais"].includes(corpo.ferramenta) ? ["Mães que querem voltar a orar", "Mulheres ansiosas que buscam paz", "Esposas que querem organizar a casa"] : ["E-book: 21 Dias no Secreto", "Desafio: 7 Dias de Paz", "Minicurso: Rotina de Oração Real"];
       return `Este é um exemplo do modo demonstração.\n\n${n.map((t, i) => `### OPÇÃO ${i + 1}: ${t}\n**Para quem:** exemplo de cliente.\n**A dor que você resolve:** exemplo de dor.\n**Por que você:** exemplo.`).join("\n\n")}\n\n## Minha recomendação\nComece pela opção 1: é a que mais combina com a sua história.`;
     }
     if (corpo.ferramenta === "raio_x") {
@@ -366,6 +372,12 @@
         <div class="conteudo">${corpo}</div>
       </main>
     </div>`;
+    if (r.nome === "inicio") {
+      const p = passoAtual();
+      if (p.tipo === "ia" && p.auto && !dados.saidas[p.ferramenta] && !gerando[p.ferramenta] && !erros[p.ferramenta] && !autoFeito.has(p.ferramenta)) {
+        autoFeito.add(p.ferramenta); gerar(p.ferramenta);
+      }
+    }
     if (r.nome === "socia") {
       const l = document.getElementById("chat-lista"); if (l) l.scrollTop = l.scrollHeight;
       const t = document.getElementById("chat-texto"); if (t && !chatEnviando && window.innerWidth > 920) t.focus();
@@ -402,7 +414,13 @@
     return "";
   }
   function atualizarBotoes() {
-    const r = rota(), id = r.nome === "f" ? r.arg : (r.nome === "inicio" ? passoAtual().ferramenta : null);
+    const r = rota();
+    if (r.nome === "inicio" && passoAtual().tipo === "texto") {
+      const p = passoAtual(), b = document.getElementById("b-passo");
+      if (b) b.disabled = !!(p.obrig && !String(dados.respostas[p.campo] || "").trim());
+      return;
+    }
+    const id = r.nome === "f" ? r.arg : (r.nome === "inicio" ? passoAtual().ferramenta : null);
     if (!id || !FERR[id] || gerando[id]) return;
     const b = document.getElementById("b-" + id), m = document.getElementById("m-" + id), motivo = bloqueio(id);
     if (b) b.disabled = !!motivo;
@@ -602,15 +620,24 @@
     const p = passoAtual(), r = dados.respostas;
     const fases = FASES.map((n, i) => `<div class="fase ${i < p.fase ? "feita" : i === p.fase ? "atual" : ""}"><span class="num ${i < p.fase ? "feito" : ""}">${i < p.fase ? I.check : i + 1}</span><span>${n}</span></div>`).join('<span class="fase-linha"></span>');
     let corpo = "";
-    if (p.tipo === "pergunta") {
+    if (p.tipo === "texto") {
+      const v = r[p.campo] || "";
+      corpo = `<div class="respostas"><textarea class="area" id="t-passo" data-campo="${p.campo}" placeholder="${esc(p.placeholder || "")}">${esc(v)}</textarea>
+        <div class="continuar">${p.pular ? `<button class="btn btn-leve" data-acao="pular-texto" data-chave="${p.campo}" data-proximo="${p.proximo}">${esc(p.pular)}</button>` : ""}
+        <button class="btn btn-pri" id="b-passo" data-acao="proxima-texto" data-proximo="${p.proximo}" ${p.obrig && !String(v).trim() ? "disabled" : ""}>Próxima ${I.seta}</button></div></div>`;
+    } else if (p.tipo === "pergunta") {
       corpo = `<div class="respostas">${p.opcoes.map(([v, rot, prox]) => `<button class="btn-resp ${r[p.campo] === v ? "sel" : ""}" data-acao="responder" data-chave="${p.campo}" data-valor="${esc(v)}" data-proximo="${prox}">${esc(rot)} ${I.seta}</button>`).join("")}</div>`;
     } else if (p.tipo === "ia") {
       const f = FERR[p.ferramenta], s = dados.saidas[p.ferramenta];
       const falta = !s ? "" : f.escolha && !r[f.escolha] ? "Escolha uma das opções acima para continuar." : "";
-      corpo = `${caixaGerar(p.ferramenta)}${resultadoHTML(p.ferramenta)}
+      const topo = p.auto
+        ? (s && !gerando[p.ferramenta] ? `<div class="linha-acoes" style="justify-content:flex-end;margin:0 0 10px"><button class="btn btn-leve" data-acao="gerar" data-id="${p.ferramenta}">${I.brilho} ${f.escolha ? "Ver outras opções" : "Gerar de novo"}</button></div>`
+          : erros[p.ferramenta] ? caixaGerar(p.ferramenta) : "")
+        : caixaGerar(p.ferramenta);
+      corpo = `${topo}${resultadoHTML(p.ferramenta)}
         ${p.checklist && s ? `<div class="passo-tit"><span class="passo">✓</span><div><b>Coloque em prática</b><small>Marque o que você já fez no seu perfil.</small></div></div>${checklistHTML(p.id, p.checklist)}` : ""}
         ${s ? `<div class="continuar">${falta ? `<span class="motivo">${falta}</span>` : ""}<button class="btn btn-pri" data-acao="avancar" data-proximo="${p.proximo}" ${falta ? "disabled" : ""}>Continuar ${I.seta}</button></div>` : ""}
-        ${p.id === "raio_x" && !s ? `<div class="continuar"><button class="btn btn-leve" data-acao="avancar" data-proximo="${p.proximo}">Pular esta parte</button></div>` : ""}`;
+        ${p.pulavel && !s ? `<div class="continuar"><button class="btn btn-leve" data-acao="avancar" data-proximo="${p.proximo}">Pular esta parte</button></div>` : ""}`;
     } else if (p.tipo === "resumo") {
       const persona = secaoMd(dados.saidas.persona?.texto, "Quem é ela") || "";
       const perfilHoje = secaoMd(dados.saidas.raio_x?.texto, "O que o seu perfil mostra");
@@ -630,6 +657,7 @@
     }
     return `
       <div class="fases">${fases}</div>
+      ${p.contador ? `<div class="contador">Pergunta ${p.contador}</div>` : ""}
       <div class="bolha"><div class="marca-sd">SD</div><div class="fala">${md(p.fala.replace("{nome}", primeiroNome()))}</div></div>
       ${corpo}
       ${dados.jornada.trilha.length ? `<button class="voltar" style="margin-top:22px" data-acao="voltar-passo">${I.voltar} Voltar ao passo anterior</button>` : ""}`;
@@ -743,7 +771,20 @@
       case "copiar": return copiar(dados.saidas[id]?.texto || "");
       case "baixar": return baixar(slug(FERR[id].titulo), dados.saidas[id]?.texto || "");
       case "expandir": { const t = document.getElementById("t-" + id); if (t) { t.classList.toggle("aberto"); t.style.maxHeight = t.classList.contains("aberto") ? "none" : ""; } return; }
-      case "responder": dados.respostas[el.dataset.chave] = el.dataset.valor; return irPara(el.dataset.proximo);
+      case "responder": {
+        const k = el.dataset.chave;
+        if (dados.respostas[k] !== el.dataset.valor && ["publico", "formato"].includes(k)) limparDepois(["produtos_virais", "blueprint", "ajustes_perfil"]);
+        dados.respostas[k] = el.dataset.valor; return irPara(el.dataset.proximo);
+      }
+      case "proxima-texto": {
+        const p = passoAtual();
+        if (dados.respostas["_ult_" + p.campo] !== dados.respostas[p.campo]) { limparDepois(["produtos_virais", "blueprint", "ajustes_perfil"]); dados.respostas["_ult_" + p.campo] = dados.respostas[p.campo]; }
+        return irPara(el.dataset.proximo);
+      }
+      case "pular-texto": {
+        if (dados.respostas[el.dataset.chave]) limparDepois(["produtos_virais", "blueprint", "ajustes_perfil"]);
+        dados.respostas[el.dataset.chave] = ""; return irPara(el.dataset.proximo);
+      }
       case "avancar": return irPara(el.dataset.proximo);
       case "voltar-passo": { const ant = dados.jornada.trilha.pop(); if (ant) { dados.jornada.passo = ant; salvar(); render(); window.scrollTo(0, 0); } return; }
       case "espiar-funil": espiarFunil = true; return render();
@@ -773,6 +814,7 @@
       case "escolher": {
         const f = FERR[id], o = opcoes(dados.saidas[id]?.texto), op = o?.ops[Number(el.dataset.i)];
         if (!op) return;
+        if (dados.respostas[f.escolha] !== op.titulo && DEPENDE[id]) limparDepois(DEPENDE[id]);
         dados.respostas[f.escolha] = op.titulo;
         dados.respostas[f.escolha + "_detalhe"] = op.corpo;
         await salvarAgora();

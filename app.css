@@ -419,3 +419,6 @@ svg{flex-shrink:0}
 .lat-fase{color:var(--claro);font-size:11.5px;margin-left:4px}
 button.voltar{background:none;border:0;cursor:pointer}
 @media (max-width:920px){.respostas{margin-left:0}.fala{font-size:15.5px;padding:16px}}
+.contador{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--suave);margin:-14px 0 12px 58px}
+.respostas .area{min-height:110px}
+@media (max-width:920px){.contador{margin-left:0}}
