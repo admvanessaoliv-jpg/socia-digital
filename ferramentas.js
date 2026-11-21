@@ -4,7 +4,7 @@
 // =====================================================================
 
 // As 4 fases que aparecem no topo da jornada
-window.FASES = ["Clareza", "Perfil", "Produto", "Funil"];
+window.FASES = ["Clareza", "Produto", "Perfil", "Funil"];
 
 // Ferramentas usadas dentro da jornada (não aparecem no painel do funil)
 //   campo.tipo "imagens" = prints; escolha = vira opções para clicar
@@ -28,7 +28,7 @@ window.JORNADA = [
     fala: "Oi! Eu sou a sua **Sócia Digital** ✨ Vamos construir o seu negócio digital juntas, um passo de cada vez.\n\nPara começar: **você já tem Instagram?**",
     opcoes: [["sim", "Sim, já tenho", "raio_x"], ["nao", "Ainda não (ou vou criar um novo)", "tem_ideia"]] },
   { id: "raio_x", fase: 0, tipo: "ia", ferramenta: "raio_x", proximo: "tem_ideia",
-    fala: "Perfeito! Então vamos começar olhando o seu perfil. Tire os prints e me mande aqui: eu analiso tudo e te digo o que o seu perfil mostra hoje." },
+    fala: "Perfeito! Então vamos começar olhando o seu perfil. Tire os prints e me mande aqui: eu analiso e te digo o que o seu perfil mostra hoje. Os ajustes no perfil vêm depois, quando a gente souber o que você vai vender." },
   { id: "tem_ideia", fase: 0, tipo: "pergunta", campo: "tem_ideia",
     fala: "Agora me conta: **você já tem uma ideia do que quer vender?**",
     opcoes: [["sim", "Sim, tenho uma ideia", "ideia"], ["nao", "Não, me ajuda a descobrir", "historia"]] },
@@ -38,20 +38,20 @@ window.JORNADA = [
     fala: "Sem problema, é para isso que eu estou aqui! Vamos começar **criando o seu nicho**. Me conta um pouco de você:" },
   { id: "persona", fase: 0, tipo: "ia", ferramenta: "persona", proximo: "clareza",
     fala: "Agora vamos conhecer a mulher que você vai ajudar: a sua **cliente ideal**. Eu monto o retrato dela para você." },
-  { id: "clareza", fase: 0, tipo: "resumo", proximo: "perfil",
+  { id: "clareza", fase: 0, tipo: "resumo", proximo: "formato",
     fala: "Perfeito! Olha a clareza que você já tem. É isso que vai guiar tudo daqui para frente:" },
-  { id: "perfil", fase: 1, tipo: "ia", ferramenta: "ajustes_perfil", proximo: "formato",
-    fala: "Agora vamos **ajustar o seu Instagram** para ele mostrar quem você é e quem você ajuda: nome, bio, foto de perfil e destaques.",
-    checklist: ["Troquei o nome do perfil", "Troquei a bio", "Ajustei a foto de perfil", "Organizei os destaques"] },
-  { id: "formato", fase: 2, tipo: "pergunta", campo: "formato",
-    fala: "Agora o mais importante: **vamos criar o seu primeiro infoproduto!** Antes de qualquer post, você precisa ter o que vender.\n\nQual formato você prefere?",
+  { id: "formato", fase: 1, tipo: "pergunta", campo: "formato",
+    fala: "Agora o mais importante: **vamos definir o seu primeiro infoproduto!** Antes de mexer no perfil ou postar qualquer coisa, você precisa saber exatamente o que vai vender.\n\nQual formato você prefere?",
     opcoes: [["E-book ou guia", "E-book ou guia", "ideias_prod"], ["Minicurso em vídeo", "Minicurso em vídeo", "ideias_prod"], ["Desafio de X dias", "Desafio de X dias", "ideias_prod"], ["Mentoria", "Mentoria", "ideias_prod"], ["A Sócia escolhe", "Me ajude a escolher", "ideias_prod"]] },
-  { id: "ideias_prod", fase: 2, tipo: "ia", ferramenta: "ideias_produto", proximo: "blueprint",
+  { id: "ideias_prod", fase: 1, tipo: "ia", ferramenta: "ideias_produto", proximo: "blueprint",
     fala: "Vou te dar **3 ideias de produto** que tocam numa dor real da sua cliente, cada uma com um mecanismo único. Escolha a que mais combina com você." },
-  { id: "blueprint", fase: 2, tipo: "ia", ferramenta: "blueprint", proximo: "pausa",
+  { id: "blueprint", fase: 1, tipo: "ia", ferramenta: "blueprint", proximo: "perfil",
     fala: "Agora eu monto o **plano completo do seu produto**: a dor, o método com mecanismo único, a estrutura, como vai ser o layout e a diagramação, e o **comando pronto para você criar no Claude**." },
+  { id: "perfil", fase: 2, tipo: "ia", ferramenta: "ajustes_perfil", proximo: "pausa",
+    fala: "Agora que a gente sabe exatamente o que você vai vender, vamos **ajustar o seu Instagram para esse produto**: nome, bio, foto de perfil e destaques, tudo apontando para a sua promessa.",
+    checklist: ["Troquei o nome do perfil", "Troquei a bio", "Ajustei a foto de perfil", "Organizei os destaques"] },
   { id: "pausa", fase: 2, tipo: "pausa", proximo: "funil", botao: "Já criei meu produto",
-    fala: "O seu norte está pronto! 🎯\n\nAgora volte para a aula do **Mapa do Infoproduto Viral** e crie o seu produto usando o plano e o comando pronto. Quando o produto estiver pronto, volte aqui: a gente monta o seu **funil de vendas**.",
+    fala: "O seu norte está pronto e o seu perfil já aponta para o seu produto! 🎯\n\nAgora volte para a aula do **Mapa do Infoproduto Viral** e crie o seu produto usando o plano e o comando pronto. Quando o produto estiver pronto, volte aqui: a gente monta o seu **funil de vendas**.",
     checklist: ["Criei o conteúdo do produto no Claude", "Montei o produto (Canva ou gravação)", "Cadastrei o produto na Kiwify"] },
   { id: "funil", fase: 3, tipo: "funil",
     fala: "Agora sim! 🚀 Com o produto pronto, é hora do **funil**: atrair as pessoas certas, criar conexão e vender. Comece pelo topo e vá descendo." },

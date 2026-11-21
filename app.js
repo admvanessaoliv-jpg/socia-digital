@@ -618,7 +618,7 @@
           <div class="res-item"><small>Seu nicho</small><b>${esc(r.nicho || "Ainda não definido")}</b>${r.nicho_detalhe ? md(r.nicho_detalhe) : ""}</div>
           ${persona ? `<div class="res-item"><small>Sua cliente ideal</small>${md(persona)}<a class="mini-link" href="#/f/persona">Ver o retrato completo ${I.seta}</a></div>` : ""}
           ${perfilHoje ? `<div class="res-item"><small>O seu perfil hoje</small>${md(perfilHoje)}</div>` : ""}
-          <div class="res-item"><small>O que vem agora</small><b>Ajustar o seu Instagram e criar o seu primeiro infoproduto.</b></div>
+          <div class="res-item"><small>O que vem agora</small><b>Definir o seu primeiro infoproduto. Depois, ajustar o seu Instagram para ele.</b></div>
         </div>
         <div class="continuar"><button class="btn btn-pri" data-acao="avancar" data-proximo="${p.proximo}">Vamos lá ${I.seta}</button></div>`;
     } else if (p.tipo === "pausa") {
