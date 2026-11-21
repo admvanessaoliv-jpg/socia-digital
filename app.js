@@ -323,8 +323,9 @@
 
   function telaBloqueada() {
     $app.innerHTML = `<div class="login"><section class="login-arte"><div class="topo"><div class="marca-sd">SD</div><span>${esc(C.NOME_CURSO)}</span></div><div><h1>Seu acesso está <em>pausado</em>.</h1></div><div class="rodape"></div></section>
-    <section class="login-form"><div style="max-width:380px"><h2>Acesso inativo</h2><p class="sub">Se você acha que isso é um engano, fale com o suporte.</p>
-    ${C.SUPORTE_URL ? `<a class="btn btn-pri" href="${esc(C.SUPORTE_URL)}" target="_blank" rel="noopener">Falar com o suporte</a>` : ""}
+    <section class="login-form"><div style="max-width:380px"><h2>Acesso inativo</h2><p class="sub">${(C.PLANOS||[]).length ? "Para continuar criando com a sua Sócia, escolha um plano. Assine com o mesmo e-mail que você usa aqui." : "Se você acha que isso é um engano, fale com o suporte."}</p>
+    ${(C.PLANOS||[]).map((p, i) => `<a class="btn ${i ? "btn-sec" : "btn-pri"}" style="display:block;text-align:center;margin-bottom:10px" href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.nome)} · ${esc(p.preco)} · ${esc(String(p.criacoes))} criações</a>`).join("")}
+    ${C.SUPORTE_URL ? `<a class="btn btn-leve" href="${esc(C.SUPORTE_URL)}" target="_blank" rel="noopener">Falar com o suporte</a>` : ""}
     <div class="links"><a href="#" data-acao="sair">Sair</a></div></div></section></div>`;
   }
 
