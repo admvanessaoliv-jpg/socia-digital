@@ -158,6 +158,8 @@
     let j = {};
     try { j = await r.json(); } catch {}
     if (!r.ok) throw new Error(j.erro || "Não consegui falar com a Sócia agora. Tente de novo.");
+    console.info("Sócia respondeu:", r.status, j);
+    if (!String(j.texto || "").trim()) throw new Error("A Sócia respondeu vazio. Tente de novo em alguns segundos.");
     if (j.usadosHoje) uso.hoje = j.usadosHoje;
     if (j.limite) uso.limite = j.limite;
     return j.texto || "";
