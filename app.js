@@ -4,13 +4,15 @@
 (function () {
   "use strict";
   const C = window.CONFIG || {};
-  const ETAPAS = window.ETAPAS || [];
+  const CATS = window.CATEGORIAS || [];
+  const COMECO = window.COMECO || [];
   const DEMO = !C.SUPABASE_URL || !C.SUPABASE_ANON_KEY;
   const $app = document.getElementById("app");
 
   // Todas as ferramentas, por id
   const FERR = {};
-  ETAPAS.forEach((e) => e.ferramentas.forEach((f) => (FERR[f.id] = { ...f, etapa: e.id })));
+  CATS.forEach((c) => c.ferramentas.forEach((f) => (FERR[f.id] = { ...f, cat: c.id, catTitulo: c.titulo })));
+  const ICONE_CAT = {};
 
   let sb = null;
   let usuaria = null; // { id, email }
@@ -54,12 +56,12 @@
   };
   const ICONE_ETAPA = { 1: I.pessoa, 2: I.pessoa, 3: I.lapis, 4: I.brilho, 5: I.lapis, 6: I.lista, 7: I.calendario, 8: I.brilho };
 
+  Object.assign(ICONE_CAT, { instagram: I.pessoa, conteudo: I.calendario, produto: I.livro, vendas: I.brilho });
+
   // ------------------------------------------------------------------ utilidades
   const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   const primeiroNome = () => (perfil.nome || "").trim().split(/\s+/)[0] || "querida";
   const hojeSP = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
-  const pct = () => Math.round((ETAPAS.filter((e) => dados.concluidas.includes(e.id)).length / ETAPAS.length) * 100);
-  const proximaEtapa = () => ETAPAS.find((e) => !dados.concluidas.includes(e.id));
   const dataBR = (iso) => { try { return new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }); } catch { return ""; } };
 
   function toast(msg) {
@@ -163,13 +165,13 @@
 
   function demoTexto(corpo) {
     if (corpo.ferramenta === "chat") {
-      return `## Que bom que você perguntou, ${primeiroNome()}!\n\nEste é o **modo demonstração**: quando o app estiver ligado ao Supabase, aqui vai aparecer a resposta real da Sócia, usando tudo o que você já preencheu nas etapas.\n\n- Ela lembra do seu nicho, da sua cliente e da sua oferta\n- Responde dúvidas sobre conteúdo, preço, Kiwify e lançamento\n- Cria textos na hora\n\n**Seu próximo passo:** continue preenchendo a etapa em que você está.`;
+      return `## Que bom que você perguntou, ${primeiroNome()}!\n\nEste é o **modo demonstração**: quando o app estiver ligado ao Supabase, aqui vai aparecer a resposta real da Sócia, usando o seu nicho e o seu produto.\n\n- Ela lembra do seu nicho, da sua cliente e da sua oferta\n- Responde dúvidas sobre conteúdo, preço, Kiwify e lançamento\n- Cria textos na hora\n\nEscolha uma ferramenta no Início e teste.`;
     }
-    if (corpo.ferramenta === "nichos" || corpo.ferramenta === "ideias_produto") {
-      const n = corpo.ferramenta === "nichos" ? ["Mães que querem voltar a orar", "Mulheres ansiosas que buscam paz", "Esposas que querem organizar a casa"] : ["E-book: 21 Dias no Secreto", "Desafio: 7 Dias de Paz", "Minicurso: Rotina de Oração Real"];
+    if (corpo.ferramenta === "nicho" || corpo.ferramenta === "ideias_produto") {
+      const n = corpo.ferramenta === "nicho" ? ["Mães que querem voltar a orar", "Mulheres ansiosas que buscam paz", "Esposas que querem organizar a casa"] : ["E-book: 21 Dias no Secreto", "Desafio: 7 Dias de Paz", "Minicurso: Rotina de Oração Real"];
       return `Este é um exemplo do modo demonstração.\n\n${n.map((t, i) => `### OPÇÃO ${i + 1}: ${t}\n**Para quem:** exemplo de cliente.\n**A dor que você resolve:** exemplo de dor.\n**Por que você:** exemplo.`).join("\n\n")}\n\n## Minha recomendação\nComece pela opção 1: é a que mais combina com a sua história.`;
     }
-    if (corpo.ferramenta === "carrossel_viral") {
+    if (corpo.ferramenta === "carrossel") {
       const sl = [["Durante 7 noites, faça isto antes de dormir", "e veja a sua casa mudar"], ["Desligue o celular 30 minutos antes", "A sua mente precisa de silêncio para descansar de verdade."], ["Escreva 3 coisas boas do dia", "Gratidão muda o foco do que falta para o que você já tem."], ["Ore pelo nome de cada filho", "Coloque diante de Deus o que você não consegue resolver sozinha."], ["Prepare o dia seguinte", "Separe a roupa e a lista: amanhã começa mais leve."], ["Durma no mesmo horário", "Rotina simples é o que sustenta a mudança."], ["Quer a jornada completa de 21 noites?", "Está tudo no meu guia. Clique no link da bio."]];
       return sl.map(([t, x], i) => `### SLIDE ${i + 1}\nTÍTULO: ${t}\nTEXTO: ${x}`).join("\n") + "\n### LEGENDA\nSalve este post e comece hoje à noite. Qual dessas você vai fazer primeiro? #rotina #fé #mulhercristã";
     }
@@ -177,13 +179,13 @@
       return "### TITULO\n21 noites para dormir em paz e acordar com direção\n### SUBTITULO\nUm guia simples para mulheres cansadas de viver no automático.\n### DOR\nVocê deita exausta e a mente não para.\n### VIRADA\nCom pequenos passos por noite, sua rotina muda.\n### CONTEUDO\n- 21 noites guiadas\n- Exercícios simples\n### BONUS\n- Checklist da noite\n### SOBRE\n[SUA HISTÓRIA AQUI]\n### GARANTIA\n7 dias de garantia.\n### PRECO\nR$ 29 à vista ou em até 3x.\n### FAQ\n**Como recebo?**\nPor e-mail, na hora.\n### CHAMADA\nSua próxima noite pode ser diferente.";
     }
     const f = FERR[corpo.ferramenta] || { titulo: "Material" };
-    return `## ${f.titulo}\n\nEste é um **exemplo do modo demonstração**. Com o Supabase e a chave da IA configurados, a Sócia cria aqui o material completo a partir das suas respostas${corpo.extra ? ` sobre *${corpo.extra}*` : ""}.\n\n### Como vai ficar\n1. Um diagnóstico do que você contou\n2. O material pronto para copiar e usar\n3. Ajustes sugeridos para a sua cliente ideal\n\n> Tudo fica salvo em **Meus materiais**.\n\n---\n\n**Seu próximo passo:** leia, ajuste com a sua história real e marque a etapa como concluída.`;
+    return `## ${f.titulo}\n\nEste é um **exemplo do modo demonstração**. Com o Supabase e a chave da IA configurados, a Sócia cria aqui o material completo para o seu nicho${corpo.extra ? ` sobre *${corpo.extra}*` : ""}, no método da Vanessa, pronto para copiar.\n\n> Tudo fica salvo em **Meus materiais**.`;
   }
 
   async function gerar(id) {
     if (gerando[id] || bloqueio(id)) return;
     const f = FERR[id];
-    const extra = f.extra ? (dados.respostas["x_" + id] || "").trim() : "";
+    const extra = f.campo ? (dados.respostas["x_" + id] || "").trim() : "";
     gerando[id] = true; delete erros[id]; atualizarFerr(id);
     try {
       const texto = await chamarIA({ ferramenta: id, extra });
@@ -194,8 +196,7 @@
       erros[id] = e.message;
     }
     gerando[id] = false;
-    const r = rota();
-    if (r.nome === "etapa" && Number(r.arg) === f.etapa) render(); else atualizarFerr(id);
+    atualizarFerr(id);
   }
 
   async function enviarChat() {
@@ -308,11 +309,10 @@
 
   function lateral(r) {
     const item = (href, ic, txt, ativo) => `<a class="lat-item ${ativo ? "ativo" : ""}" href="#/${href}">${ic}<span>${txt}</span></a>`;
-    const etapas = ETAPAS.map((e) => {
-      const feito = dados.concluidas.includes(e.id);
-      const ativo = r.nome === "etapa" && Number(r.arg) === e.id;
-      return `<a class="lat-item ${ativo ? "ativo" : ""} ${etapaLiberada(e.id) ? "" : "fechada"}" href="#/etapa/${e.id}"><span class="num ${feito ? "feito" : ""}">${feito ? I.check : e.id}</span><span>${esc(e.titulo)}</span></a>`;
-    }).join("");
+    const grupos = CATS.map((c) => `<div class="lat-sec">${esc(c.titulo)}</div>` + c.ferramentas.map((f) => {
+      const ativo = r.nome === "f" && r.arg === f.id, feito = !!dados.saidas[f.id];
+      return `<a class="lat-item pq ${ativo ? "ativo" : ""}" href="#/f/${f.id}"><span class="ponto ${feito ? "feito" : ""}"></span><span>${esc(f.titulo)}</span></a>`;
+    }).join("")).join("");
     return `
     <aside class="lateral">
       <div class="lat-topo"><div class="marca-sd">SD</div><div><b>Sócia Digital</b><small>${esc(C.NOME_CURSO)}</small><div class="status-ia"><i></i> IA online</div></div></div>
@@ -320,8 +320,7 @@
         ${item("inicio", I.casa, "Início", r.nome === "inicio")}
         ${item("socia", I.chat, "Fale com a Sócia", r.nome === "socia")}
         ${item("materiais", I.pasta, "Meus materiais", r.nome === "materiais")}
-        <div class="lat-sec">O mapa · ${pct()}%</div>
-        ${etapas}
+        ${grupos}
       </nav>
       <div class="lat-rodape">
         <div class="avatar">${esc(primeiroNome().charAt(0).toUpperCase())}</div>
@@ -335,7 +334,7 @@
     if (!usuaria) return;
     const r = rota();
     let corpo = "";
-    if (r.nome === "etapa") corpo = viewEtapa(Number(r.arg));
+    if (r.nome === "f") corpo = viewFerramenta(r.arg);
     else if (r.nome === "socia") corpo = viewChat();
     else if (r.nome === "materiais") corpo = viewMateriais();
     else if (r.nome === "conta") corpo = viewConta();
@@ -355,46 +354,32 @@
     }
   }
 
-  // ------------------------------------------------------------------ Início
-  function anel(p) {
-    const R = 56, L = 2 * Math.PI * R;
-    return `<div class="anel"><svg width="132" height="132"><circle cx="66" cy="66" r="${R}" fill="none" stroke="#1A221F" stroke-width="8"/><circle cx="66" cy="66" r="${R}" fill="none" stroke="url(#g)" stroke-width="8" stroke-linecap="round" stroke-dasharray="${L}" stroke-dashoffset="${L * (1 - p / 100)}"/><defs><linearGradient id="g"><stop offset="0" stop-color="#3DDCFF"/><stop offset="1" stop-color="#39FF88"/></linearGradient></defs></svg><div class="pct"><div><b>${p}%</b><small>do mapa</small></div></div></div>`;
+  // ------------------------------------------------------------------ Início (painel)
+  function cardFerr(f) {
+    f = FERR[f.id] || f;
+    const feito = !!dados.saidas[f.id];
+    return `<a class="atalho ${feito ? "feito" : ""}" href="#/f/${f.id}"><span class="ic">${ICONE_CAT[f.cat] || I.brilho}</span><b>${esc(f.titulo)}</b><span>${esc(f.desc)}</span>${feito ? `<span class="selo-ok">${I.check} criado</span>` : ""}</a>`;
   }
 
   function viewInicio() {
-    const prox = proximaEtapa();
-    const nMat = Object.keys(dados.saidas).length;
-    const heroi = prox
-      ? `<div><div class="olho">Seu próximo passo</div><h2 class="titulo" style="font-size:clamp(28px,3vw,36px)">Etapa ${prox.id} · ${esc(prox.titulo)}</h2><p class="lead">${esc(prox.subtitulo)}. ${esc(prox.intro)}</p>
-         <div class="proximo"><a class="btn btn-pri" href="#/etapa/${prox.id}">${dados.concluidas.length ? "Continuar" : "Começar agora"} ${I.seta}</a><a class="btn btn-sec" href="#/socia">${I.chat} Tirar uma dúvida</a></div></div>`
-      : `<div><div class="olho">Mapa completo</div><h2 class="titulo" style="font-size:clamp(28px,3vw,36px)">Você publicou o seu infoproduto! 🎉</h2><p class="lead">Agora é constância: conteúdo, conversa no direct e melhorias a cada venda. A Sócia continua aqui.</p>
-         <div class="proximo"><a class="btn btn-pri" href="#/etapa/7">Criar mais conteúdo ${I.seta}</a><a class="btn btn-sec" href="#/socia">${I.chat} Falar com a Sócia</a></div></div>`;
-    const mapa = ETAPAS.map((e) => {
-      const feito = dados.concluidas.includes(e.id), atual = prox && prox.id === e.id;
-      return `<a class="mapa-item ${atual ? "atual" : ""} ${etapaLiberada(e.id) ? "" : "fechada"}" href="#/etapa/${e.id}">${atual ? '<span class="selo">Agora</span>' : ""}<span class="num ${feito ? "feito" : ""}">${feito ? I.check : e.id}</span><b>${esc(e.titulo)}</b><small>${esc(e.subtitulo)}</small></a>`;
-    }).join("");
+    const r = dados.respostas;
+    const comeco = COMECO.filter((id) => FERR[id]).map((id, i) => `<a class="chip ${dados.saidas[id] ? "feito" : ""}" href="#/f/${id}"><span class="num ${dados.saidas[id] ? "feito" : ""}">${dados.saidas[id] ? I.check : i + 1}</span>${esc(FERR[id].titulo)}</a>`).join("");
     return `
       <div class="olho">${esc(C.NOME_CURSO)}</div>
       <h1 class="titulo">Olá, <em>${esc(primeiroNome())}</em>.</h1>
-      <p class="lead" style="margin-bottom:28px">Eu sou a sua Sócia Digital. Vamos construir o seu infoproduto do zero até a publicação, uma etapa de cada vez.</p>
-      <section class="heroi">${heroi}${anel(pct())}</section>
-      <div class="grade">
-        <a class="atalho" href="#/socia"><span class="ic">${I.chat}</span><b>Fale com a Sócia</b><span>Dúvidas, ideias e textos na hora, já com o contexto do seu negócio.</span></a>
-        <a class="atalho ouro" href="#/materiais"><span class="ic">${I.pasta}</span><b>Meus materiais</b><span>${nMat ? `${nMat} ${nMat === 1 ? "material criado" : "materiais criados"} e guardados para você.` : "Tudo o que a Sócia criar fica guardado aqui."}</span></a>
-        <a class="atalho verde" href="#/conta"><span class="ic">${I.pessoa}</span><b>Minha conta</b><span>Seu nome e quantas criações você ainda tem hoje (${Math.max(0, uso.limite - uso.hoje)} de ${uso.limite}).</span></a>
-      </div>
-      <div class="secao-tit"><h3>O seu mapa</h3><span class="olho" style="color:var(--suave)">${dados.concluidas.length} de ${ETAPAS.length} etapas</span></div>
-      <div class="mapa">${mapa}</div>`;
-  }
-
-  // ------------------------------------------------------------------ Etapa
-  function campoHTML(c) {
-    const v = dados.respostas[c.id] || "";
-    let input;
-    if (c.tipo === "area") input = `<textarea class="area" id="c-${c.id}" data-campo="${c.id}">${esc(v)}</textarea>`;
-    else if (c.tipo === "select") input = `<select class="select" id="c-${c.id}" data-campo="${c.id}"><option value="">Escolha...</option>${c.opcoes.map((o) => `<option ${o === v ? "selected" : ""}>${esc(o)}</option>`).join("")}</select>`;
-    else input = `<input class="input" id="c-${c.id}" data-campo="${c.id}" value="${esc(v)}">`;
-    return `<div class="campo ${c.tipo === "area" ? "cheia" : ""}"><label for="c-${c.id}">${esc(c.rotulo)}${c.obrig ? ' <span class="obrig">*</span>' : ""}</label>${c.dica ? `<div class="dica">${esc(c.dica)}</div>` : ""}${input}</div>`;
+      <p class="lead" style="margin-bottom:26px">Escolha uma ferramenta. A Sócia cria no método da Vanessa, pronto para você copiar e usar.</p>
+      <section class="cartao negocio">
+        <div class="cartao-cab"><span class="ic">${I.pessoa}</span><div><h4>Meu negócio</h4><p class="desc">Preencha uma vez: todas as ferramentas usam. <span class="salvo" id="salvo"></span></p></div></div>
+        <div class="tres">
+          <div class="campo"><label for="c-nicho">Meu nicho</label><input class="input" id="c-nicho" data-campo="nicho" placeholder="Ex.: mães cristãs que querem sair das dívidas" value="${esc(r.nicho || "")}"><a class="mini-link" href="#/f/nicho">Não sabe? Descobrir meu nicho ${I.seta}</a></div>
+          <div class="campo"><label for="c-arroba">Meu @</label><input class="input" id="c-arroba" data-campo="arroba" placeholder="@seuperfil" value="${esc(r.arroba || "")}"></div>
+          <div class="campo"><label for="c-produto">Meu produto</label><input class="input" id="c-produto" data-campo="produto" placeholder="Ex.: E-book 21 Dias Sem Dívidas" value="${esc(r.produto || "")}"><a class="mini-link" href="#/f/ideias_produto">Ainda não tem? Ideias de produto ${I.seta}</a></div>
+        </div>
+      </section>
+      <div class="secao-tit"><h3>Por onde começar</h3><span class="olho" style="color:var(--suave)">sugestão</span></div>
+      <div class="chips">${comeco}</div>
+      ${CATS.map((c) => `<div class="secao-tit"><h3>${esc(c.titulo)}</h3><span class="desc-cat">${esc(c.desc)}</span></div>
+        <div class="grade">${c.ferramentas.map(cardFerr).join("")}</div>`).join("")}`;
   }
 
   // Lê as "### OPÇÃO N: nome" da resposta da IA
@@ -413,51 +398,29 @@
     return { intro: partes[0].trim(), ops, rec: rec.trim() };
   }
 
-  // Etapa liberada quando a anterior foi concluída
-  const etapaLiberada = (id) => id === 1 || dados.concluidas.includes(id - 1);
-  const faltando = (e) => e.campos.filter((c) => c.obrig && !String(dados.respostas[c.id] || "").trim());
   function bloqueio(id) {
-    const f = FERR[id], e = ETAPAS.find((x) => x.id === f.etapa);
-    if (!etapaLiberada(e.id)) return `Conclua a etapa ${e.id - 1} primeiro.`;
-    const fl = faltando(e);
-    if (fl.length) return `Responda ${fl.length === 1 ? "a pergunta obrigatória" : `as ${fl.length} perguntas obrigatórias`} acima para liberar.`;
-    if (f.extra && !f.extra.opcional && !String(dados.respostas["x_" + id] || "").trim()) return `Escreva o tema para liberar.`;
-    if (f.requer && !dados.respostas[f.requer]) return "Escolha uma das opções acima para liberar.";
+    const f = FERR[id];
+    if (f?.campo?.obrig && !String(dados.respostas["x_" + id] || "").trim()) return "Preencha o campo acima para liberar.";
     return "";
   }
   function atualizarBotoes() {
-    const r = rota(); if (r.nome !== "etapa") return;
-    const e = ETAPAS.find((x) => x.id === Number(r.arg)); if (!e) return;
-    e.ferramentas.forEach((f) => {
-      if (gerando[f.id]) return;
-      const b = document.getElementById("b-" + f.id), m = document.getElementById("m-" + f.id);
-      const motivo = bloqueio(f.id);
-      if (b) b.disabled = !!motivo;
-      if (m) { m.textContent = motivo; m.style.display = motivo ? "" : "none"; }
-    });
+    const r = rota(); if (r.nome !== "f" || !FERR[r.arg] || gerando[r.arg]) return;
+    const b = document.getElementById("b-" + r.arg), m = document.getElementById("m-" + r.arg), motivo = bloqueio(r.arg);
+    if (b) b.disabled = !!motivo;
+    if (m) m.textContent = motivo;
   }
 
   const FRASES = ["A Sócia está pensando na sua cliente ideal...", "Organizando as ideias com carinho...", "Escrevendo na sua voz...", "Quase pronto, só os últimos detalhes..."];
 
-  function ferrHTML(id) {
-    const f = FERR[id], s = dados.saidas[id], g = gerando[id];
-    const motivo = g ? "" : bloqueio(id);
-    const botao = g
-      ? `<button class="btn btn-pri" disabled>Criando...</button>`
-      : `<button class="btn ${s ? "btn-sec" : "btn-pri"}" id="b-${id}" data-acao="gerar" data-id="${id}" ${motivo ? "disabled" : ""}>${I.brilho} ${s ? "Gerar de novo" : "Gerar com a Sócia"}</button>`;
-    let res = "";
-    if (g) res = `<div class="ferr-res"><div class="pensando"><span class="pontos"><i></i><i></i><i></i></span><span data-frase>${FRASES[0]}</span></div></div>`;
-    else if (s) res = `<div class="ferr-res"><div class="ferr-acoes"><span class="quando">Criado em ${dataBR(s.em)}${s.extra ? ` · ${esc(s.extra)}` : ""}</span>
+  function resultadoHTML(id) {
+    const s = dados.saidas[id];
+    if (gerando[id]) return `<div class="ferr"><div class="ferr-res"><div class="pensando"><span class="pontos"><i></i><i></i><i></i></span><span data-frase>${FRASES[0]}</span></div></div></div>`;
+    if (!s) return "";
+    return `<div class="ferr"><div class="ferr-res"><div class="ferr-acoes"><span class="quando">Criado em ${dataBR(s.em)}${s.extra ? ` · ${esc(s.extra)}` : ""}</span>
         <button class="btn-leve" data-acao="copiar" data-id="${id}">${I.copiar} Copiar</button>
         <button class="btn-leve" data-acao="baixar" data-id="${id}">${I.baixar} Baixar</button>
         <button class="btn-leve" data-acao="expandir" data-id="${id}">${I.expandir} Ver tudo</button></div>
-        ${corpoSaida(id, s)}</div>`;
-    return `<div class="ferr" id="f-${id}">
-      <div class="ferr-cab"><span class="ic">${I.brilho}</span><div class="txt"><b>${esc(f.titulo)}</b><span>${esc(f.descricao)}</span></div>${botao}</div>
-      <div class="motivo" id="m-${id}" ${motivo ? "" : 'style="display:none"'}>${esc(motivo)}</div>
-      ${f.extra ? `<div class="ferr-extra"><div class="campo"><label for="x-${id}">${esc(f.extra.rotulo)}</label><input class="input" id="x-${id}" data-campo="x_${id}" placeholder="${esc(f.extra.placeholder)}" value="${esc(dados.respostas["x_" + id] || "")}"></div></div>` : ""}
-      ${erros[id] ? `<div class="erro-ia">${esc(erros[id])}</div>` : ""}
-      ${res}</div>`;
+        ${corpoSaida(id, s)}</div></div>`;
   }
   function corpoSaida(id, s) {
     const f = FERR[id];
@@ -574,41 +537,41 @@
   }
 
   function atualizarFerr(id) {
-    const el = document.getElementById("f-" + id);
-    if (el) el.outerHTML = ferrHTML(id);
+    const r = rota();
+    if (r.nome === "f" && r.arg === id) render();
   }
 
-  function viewEtapa(n) {
-    const e = ETAPAS.find((x) => x.id === n);
-    if (!e) { location.hash = "#/inicio"; return ""; }
-    const feito = dados.concluidas.includes(e.id);
-    const liberada = etapaLiberada(e.id);
-    const principal = e.principal || e.ferramentas[0].id, fp = FERR[principal];
-    const falta = !dados.saidas[principal] ? `Gere o “${esc(fp.titulo)}” para poder concluir.`
-      : fp.escolha && !dados.respostas[fp.escolha] ? "Escolha uma das opções para poder concluir." : "";
-    const podeConcluir = !falta;
-    const checks = dados.checks[e.id] || [];
-    const ant = ETAPAS.find((x) => x.id === n - 1), prox = ETAPAS.find((x) => x.id === n + 1);
-    let passo = 0;
-    const tituloPasso = (t, d) => `<div class="passo-tit"><span class="passo">${++passo}</span><div><b>${t}</b>${d ? `<small>${d}</small>` : ""}</div></div>`;
+  function usandoHTML(id) {
+    const r = dados.respostas;
+    if (id === "nicho") return "";
+    if (!String(r.nicho || "").trim()) return `<div class="usa aviso">Você ainda não definiu o seu nicho. <a href="#/inicio">Preencha em Meu negócio</a> ou use <a href="#/f/nicho">Descobrir meu nicho</a>: assim o texto sai sob medida.</div>`;
+    return `<div class="usa">Usando: <b>${esc(r.nicho)}</b>${r.produto ? ` · produto <b>${esc(r.produto)}</b>` : ""} · <a href="#/inicio">alterar</a></div>`;
+  }
+
+  function viewFerramenta(id) {
+    const f = FERR[id];
+    if (!f) { location.hash = "#/inicio"; return ""; }
+    const s = dados.saidas[id], g = gerando[id], motivo = g ? "" : bloqueio(id), c = f.campo;
+    const v = dados.respostas["x_" + id] || "";
+    const campo = c ? `<div class="campo"><label for="x-${id}">${esc(c.rotulo)}${c.obrig ? ' <span class="obrig">*</span>' : ""}</label>${c.tipo === "area"
+      ? `<textarea class="area" id="x-${id}" data-campo="x_${id}" placeholder="${esc(c.placeholder || "")}">${esc(v)}</textarea>`
+      : `<input class="input" id="x-${id}" data-campo="x_${id}" placeholder="${esc(c.placeholder || "")}" value="${esc(v)}">`}</div>` : "";
+    const outras = (CATS.find((x) => x.id === f.cat)?.ferramentas || []).filter((x) => x.id !== id).slice(0, 3);
     return `
-      <div class="etapa-topo"><div><div class="olho">Etapa ${e.id} de ${ETAPAS.length}</div><h1 class="titulo">${esc(e.titulo)}</h1><p class="lead">${esc(e.intro)}</p></div></div>
-      ${!liberada ? `<div class="aviso-trava">${I.lista}<div><b>Esta etapa ainda está fechada.</b><span>Termine a etapa ${e.id - 1} (${esc(ant.titulo)}) e marque como concluída para liberar.</span></div><a class="btn btn-sec" href="#/etapa/${e.id - 1}">Ir para a etapa ${e.id - 1}</a></div>` : ""}
-      ${e.campos.length ? `${tituloPasso("Responda", "A Sócia usa estas respostas em tudo o que cria. O * indica as obrigatórias.")}
-        <section class="cartao"><div class="duas">${e.campos.map(campoHTML).join("")}</div><span class="salvo" id="salvo"></span></section>` : ""}
-      ${e.formulas ? formulasHTML() : ""}
-      ${tituloPasso("Gere com a Sócia", e.ferramentas.length > 1 ? "Comece pela primeira; as outras completam." : "")}
-      ${e.ferramentas.map((f) => ferrHTML(f.id)).join("")}
-      ${e.checklist ? `${tituloPasso("Coloque em prática", "Marque o que você já fez.")}
-        <section class="cartao"><ul class="checklist">${e.checklist.map((c, i) => `<li class="${checks.includes(i) ? "ok" : ""}" data-acao="check" data-etapa="${e.id}" data-i="${i}"><span class="caixa">${checks.includes(i) ? I.check : ""}</span><span>${esc(c)}</span></li>`).join("")}</ul></section>` : ""}
-      <div class="concluir ${feito ? "feito" : ""}">
-        <div><b>${feito ? "Etapa concluída ✓" : "Terminou esta etapa?"}</b><p>${feito ? "Você pode voltar aqui quando quiser para ajustar." : podeConcluir ? (prox ? `Marque como concluída para liberar a etapa ${prox.id}.` : "Marque como concluída para finalizar o seu mapa.") : falta}</p></div>
-        <button class="btn ${feito ? "btn-sec" : "btn-pri"}" data-acao="concluir" data-etapa="${e.id}" ${!feito && !podeConcluir ? "disabled" : ""}>${feito ? "Desmarcar" : "Marcar como concluída"}</button>
-      </div>
-      <div class="nav-etapas">
-        ${ant ? `<a class="btn btn-leve" href="#/etapa/${ant.id}">${I.voltar} ${esc(ant.titulo)}</a>` : "<span></span>"}
-        ${prox ? `<a class="btn btn-leve" href="#/etapa/${prox.id}">${esc(prox.titulo)} ${I.seta}</a>` : ""}
-      </div>`;
+      <a class="voltar" href="#/inicio">${I.voltar} Todas as ferramentas</a>
+      <div class="olho">${esc(f.catTitulo)}</div><h1 class="titulo">${esc(f.titulo)}</h1><p class="lead">${esc(f.desc)}</p>
+      ${f.formulas ? `<details class="det-formulas"><summary>Ver as fórmulas de capa da Vanessa</summary>${formulasHTML()}</details>` : ""}
+      <section class="cartao caixa-gerar">
+        ${campo}
+        ${usandoHTML(id)}
+        <div class="linha-acoes" style="margin-top:${campo ? 4 : 0}px;align-items:center">
+          ${g ? `<button class="btn btn-pri" disabled>Criando...</button>` : `<button class="btn btn-pri" id="b-${id}" data-acao="gerar" data-id="${id}" ${motivo ? "disabled" : ""}>${I.brilho} ${s ? "Gerar de novo" : "Gerar com a Sócia"}</button>`}
+          <span class="motivo" id="m-${id}">${esc(motivo)}</span>
+        </div>
+      </section>
+      ${erros[id] ? `<div class="erro-ia" style="border-radius:12px;margin-bottom:16px">${esc(erros[id])}</div>` : ""}
+      ${resultadoHTML(id)}
+      ${outras.length ? `<div class="secao-tit"><h3>Continue com</h3></div><div class="grade">${outras.map(cardFerr).join("")}</div>` : ""}`;
   }
 
   // ------------------------------------------------------------------ Chat
@@ -621,7 +584,7 @@
       <div class="chat-cab"><div><div class="olho">Sempre com você</div><h1 class="titulo" style="margin-bottom:0">Fale com a <em>Sócia</em></h1></div>
         ${dados.chat.length ? `<button class="btn btn-leve" data-acao="limpar-chat">Nova conversa</button>` : ""}</div>
       <div class="chat-lista" id="chat-lista">
-        ${msgs || `<div class="chat-vazio"><div class="marca-sd">SD</div><p>Pergunte o que quiser sobre o seu negócio. Eu já conheço o que você preencheu nas etapas.</p>
+        ${msgs || `<div class="chat-vazio"><div class="marca-sd">SD</div><p>Pergunte o que quiser sobre o seu negócio. Eu já conheço o seu nicho e o seu produto.</p>
           <div class="sugestoes">${sugest.map((s) => `<button data-acao="sugestao" data-txt="${esc(s)}">${esc(s)}</button>`).join("")}</div></div>`}
         ${chatEnviando ? `<div class="msg ela"><div class="pontos" style="padding:6px 0"><i></i><i></i><i></i></div></div>` : ""}
       </div>
@@ -634,8 +597,8 @@
   function viewMateriais() {
     const itens = Object.entries(dados.saidas).filter(([id]) => FERR[id]).sort((a, b) => (b[1].em || "").localeCompare(a[1].em || ""));
     const lista = itens.map(([id, s]) => {
-      const f = FERR[id], e = ETAPAS.find((x) => x.id === f.etapa);
-      return `<div class="ferr"><div class="ferr-cab"><span class="ic">${I.brilho}</span><div class="txt"><b>${esc(f.titulo)}</b><span>Etapa ${e.id} · ${esc(e.titulo)}${s.extra ? ` · ${esc(s.extra)}` : ""}</span></div><a class="btn btn-sec" href="#/etapa/${e.id}">Abrir etapa</a></div>
+      const f = FERR[id];
+      return `<div class="ferr"><div class="ferr-cab"><span class="ic">${ICONE_CAT[f.cat] || I.brilho}</span><div class="txt"><b>${esc(f.titulo)}</b><span>${esc(f.catTitulo)}${s.extra ? ` · ${esc(s.extra)}` : ""}</span></div><a class="btn btn-sec" href="#/f/${id}">Abrir</a></div>
         <div class="ferr-res"><div class="ferr-acoes"><span class="quando">${dataBR(s.em)}</span>
         <button class="btn-leve" data-acao="copiar" data-id="${id}">${I.copiar} Copiar</button>
         <button class="btn-leve" data-acao="baixar" data-id="${id}">${I.baixar} Baixar</button>
@@ -643,7 +606,7 @@
         <div class="texto-ia" id="t-${id}" style="max-height:240px">${md(s.texto)}</div></div></div>`;
     }).join("");
     return `<div class="olho">Tudo guardado</div><h1 class="titulo">Meus <em>materiais</em></h1><p class="lead" style="margin-bottom:28px">Cada texto que a Sócia criou para você, do mais recente para o mais antigo.</p>
-      ${lista || `<div class="cartao vazio"><p>Você ainda não gerou nenhum material.</p><p style="margin-top:14px"><a class="btn btn-pri" href="#/etapa/1">Começar pela Descoberta ${I.seta}</a></p></div>`}`;
+      ${lista || `<div class="cartao vazio"><p>Você ainda não gerou nenhum material.</p><p style="margin-top:14px"><a class="btn btn-pri" href="#/inicio">Escolher uma ferramenta ${I.seta}</a></p></div>`}`;
   }
 
   // ------------------------------------------------------------------ Conta
@@ -655,8 +618,8 @@
       <section class="cartao"><h4>Criações de hoje</h4><p class="desc">Você pode gerar até ${uso.limite} materiais ou respostas por dia. Amanhã renova.</p>
         <div class="uso"><i style="width:${p}%"></i></div><small style="color:var(--suave)">${uso.hoje} de ${uso.limite} usadas hoje</small></section>
       ${DEMO ? "" : `<section class="cartao"><h4>Trocar senha</h4><div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px"><input class="input" id="nova-senha" type="password" placeholder="Nova senha (mínimo 6)" style="flex:1;min-width:200px"><button class="btn btn-sec" data-acao="trocar-senha">Trocar</button></div></section>`}
-      <section class="cartao"><h4>Recomeçar do zero</h4><p class="desc" style="margin-bottom:14px">Apaga as suas respostas e os materiais e volta para a etapa 1.</p>
-        <button class="btn btn-sec" data-acao="recomecar">${confirmarReset ? "Clique de novo para apagar tudo" : "Recomeçar meu mapa"}</button></section>
+      <section class="cartao"><h4>Recomeçar do zero</h4><p class="desc" style="margin-bottom:14px">Apaga o seu negócio e todos os materiais.</p>
+        <button class="btn btn-sec" data-acao="recomecar">${confirmarReset ? "Clique de novo para apagar tudo" : "Recomeçar do zero"}</button></section>
       <div style="display:flex;gap:10px;flex-wrap:wrap">${C.SUPORTE_URL ? `<a class="btn btn-sec" href="${esc(C.SUPORTE_URL)}" target="_blank" rel="noopener">Falar com o suporte</a>` : ""}<button class="btn btn-leve" data-acao="sair">${I.sair} Sair</button></div>`;
   }
 
@@ -678,26 +641,11 @@
       case "copiar": return copiar(dados.saidas[id]?.texto || "");
       case "baixar": return baixar(slug(FERR[id].titulo), dados.saidas[id]?.texto || "");
       case "expandir": { const t = document.getElementById("t-" + id); if (t) { t.classList.toggle("aberto"); t.style.maxHeight = t.classList.contains("aberto") ? "none" : ""; } return; }
-      case "check": {
-        const e = Number(el.dataset.etapa), i = Number(el.dataset.i);
-        const l = dados.checks[e] || (dados.checks[e] = []);
-        const k = l.indexOf(i); k >= 0 ? l.splice(k, 1) : l.push(i);
-        salvar(); return render();
-      }
-      case "concluir": {
-        const e = Number(el.dataset.etapa), k = dados.concluidas.indexOf(e);
-        if (k >= 0) dados.concluidas.splice(k, 1);
-        else { dados.concluidas.push(e); toast(e === ETAPAS.length ? "Você completou o mapa! 🎉" : "Etapa concluída! Seguimos juntas ✨"); }
-        await salvarAgora();
-        if (k < 0 && e < ETAPAS.length) { location.hash = `#/etapa/${e + 1}`; window.scrollTo(0, 0); }
-        else render();
-        return;
-      }
       case "copiar-bloco": return copiar(el.closest(".bloco-cod")?.querySelector("pre")?.textContent || "");
       case "recomecar": {
         if (!confirmarReset) { confirmarReset = true; return render(); }
         confirmarReset = false; dados = novosDados(); await salvarAgora();
-        toast("Mapa recomeçado!"); location.hash = "#/etapa/1"; return;
+        toast("Tudo apagado. Vamos de novo!"); location.hash = "#/inicio"; render(); return;
       }
       case "carr-copiar": return copiar(textoSlides(dados.saidas[id]));
       case "slide-copiar": { const sl = dados.saidas[id]?.slides?.[Number(el.dataset.i)]; return copiar(sl ? `${sl.titulo}${sl.texto ? "\n" + sl.texto : ""}` : ""); }
@@ -743,6 +691,7 @@
     const el = ev.target.closest("[data-campo]");
     if (!el) return;
     dados.respostas[el.dataset.campo] = el.value;
+    if (el.dataset.campo === "nicho" || el.dataset.campo === "produto") dados.respostas[el.dataset.campo + "_detalhe"] = "";
     salvar();
     atualizarBotoes();
     const s = document.getElementById("salvo");
