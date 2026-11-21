@@ -8,7 +8,7 @@
 //   pagina       -> permite publicar a página de vendas
 // (Os comandos da IA ficam no Supabase, em functions/socia-ia.)
 // =====================================================================
-window.COMECO = ["nicho", "bio", "carrossel", "ideias_produto", "pagina_vendas"];
+window.COMECO = ["nicho", "bio", "carrossel", "reels", "ideias_produto", "mecanismo", "pagina_vendas"];
 
 window.CATEGORIAS = [
   {
@@ -22,10 +22,14 @@ window.CATEGORIAS = [
     ],
   },
   {
-    id: "conteudo", titulo: "Conteúdo", desc: "Carrosséis no método da Vanessa.",
+    id: "conteudo", titulo: "Conteúdo", desc: "Carrossel, Reels e stories no método da Vanessa.",
     ferramentas: [
       { id: "carrossel", titulo: "Carrossel viral", desc: "O texto dos 7 slides e a legenda, com pitch no último slide. Você monta no Canva.", carrossel: true, formulas: true,
         campo: { rotulo: "Tema do carrossel (opcional)", placeholder: "Deixe em branco e a Sócia escolhe. Ex.: Durante 7 noites, ore pela sua casa" } },
+      { id: "reels", titulo: "Roteiro de Reels", desc: "Gancho dos 3 primeiros segundos, falas, texto na tela e chamada final.", formulas: true,
+        campo: { rotulo: "Tema do Reels (opcional)", placeholder: "Deixe em branco e a Sócia escolhe. Ex.: 3 sinais de que você vive no automático" } },
+      { id: "ideias_reels", titulo: "10 ideias de Reels", desc: "Ganchos prontos para a semana, com as 3 com mais chance de viralizar marcadas.",
+        campo: { rotulo: "Assunto (opcional)", placeholder: "Ex.: finanças, casamento, ansiedade" } },
       { id: "capas", titulo: "10 capas que param a rolagem", desc: "Ideias de capa nas fórmulas que mais vendem.", formulas: true,
         campo: { rotulo: "Assunto (opcional)", placeholder: "Ex.: finanças, casamento, ansiedade" } },
       { id: "semana", titulo: "Conteúdo da semana", desc: "7 ideias de post, uma para cada dia, já com a capa." },
@@ -36,9 +40,11 @@ window.CATEGORIAS = [
     ],
   },
   {
-    id: "produto", titulo: "Produto", desc: "O que você vai vender.",
+    id: "produto", titulo: "Produto", desc: "Infoproduto viral: 1 dor, mecanismo único, entrega fácil, consumo rápido, R$ 27.",
     ferramentas: [
-      { id: "ideias_produto", titulo: "Ideias de produto", desc: "3 produtos simples para o seu nicho. Escolha um e ele fica salvo.", escolha: "produto", botaoEscolha: "Usar este produto" },
+      { id: "ideias_produto", titulo: "Ideias de produto viral", desc: "3 produtos de R$ 27 que resolvem uma dor, com mecanismo único, fáceis de criar e rápidos de consumir. Escolha um.", escolha: "produto", botaoEscolha: "Usar este produto" },
+      { id: "mecanismo", titulo: "Mecanismo único", desc: "O nome e os passos do SEU método: o que faz a cliente não comparar seu produto com nada.", escolha: "mecanismo", botaoEscolha: "Usar este mecanismo",
+        campo: { rotulo: "Qual produto? (opcional)", placeholder: "Deixe em branco para usar o produto do Meu negócio" } },
       { id: "sumario", titulo: "Sumário do produto", desc: "Capítulos ou aulas com o que ensinar em cada um e como criar no Canva.",
         campo: { rotulo: "Qual produto? (opcional)", placeholder: "Deixe em branco para usar o produto do Meu negócio" } },
       { id: "nomes", titulo: "Nome e promessa", desc: "10 nomes e 5 promessas fortes para o seu produto." },

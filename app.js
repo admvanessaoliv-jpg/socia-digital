@@ -547,7 +547,7 @@
     const r = dados.respostas;
     if (id === "nicho") return "";
     if (!String(r.nicho || "").trim()) return `<div class="usa aviso">Você ainda não definiu o seu nicho. <a href="#/inicio">Preencha em Meu negócio</a> ou use <a href="#/f/nicho">Descobrir meu nicho</a>: assim o texto sai sob medida.</div>`;
-    return `<div class="usa">Usando: <b>${esc(r.nicho)}</b>${r.produto ? ` · produto <b>${esc(r.produto)}</b>` : ""} · <a href="#/inicio">alterar</a></div>`;
+    return `<div class="usa">Usando: <b>${esc(r.nicho)}</b>${r.produto ? ` · produto <b>${esc(r.produto)}</b>` : ""}${r.mecanismo ? ` · mecanismo <b>${esc(r.mecanismo)}</b>` : ""} · <a href="#/inicio">alterar</a></div>`;
   }
 
   function viewFerramenta(id) {
