@@ -410,6 +410,7 @@
   function bloqueio(id) {
     const f = FERR[id];
     if (f?.campo?.tipo === "imagens") return prints.length ? "" : "Adicione pelo menos 1 print para liberar.";
+    if (f?.pagina && (!String(dados.respostas.produto || "").trim() || !String(dados.respostas.preco || "").trim())) return "Preencha o nome do produto e o preço para liberar.";
     if (f?.campo?.obrig && !String(dados.respostas["x_" + id] || "").trim()) return "Preencha o campo acima para liberar.";
     return "";
   }
@@ -509,14 +510,26 @@
         <textarea class="area" data-pagina-texto="${id}" rows="16">${esc(s.texto)}</textarea>
         <small class="dica-cel">Mantenha os marcadores que começam com ### (TITULO, DOR, CONTEUDO...).</small></details>
       <div class="pub">
-        <div class="campo"><label for="c-checkout">Link do checkout da Kiwify <span class="obrig">*</span></label><div class="dica">Na Kiwify: Produtos → seu produto → Links → copie o link do checkout.</div><input class="input" id="c-checkout" data-campo="checkout" placeholder="https://pay.kiwify.com.br/..." value="${esc(dados.respostas.checkout || "")}"></div>
-        <div class="campo"><label for="c-hist">Sua história (aparece em “Quem sou eu”)</label><div class="dica">2 ou 3 linhas, em primeira pessoa: o que você viveu e por que criou este produto.</div><textarea class="area" id="c-hist" data-campo="historia_pagina" placeholder="Ex.: Eu vivia cansada e dormia mal. Quando troquei o café da noite por um chá natural, tudo mudou...">${esc(dados.respostas.historia_pagina ?? dados.respostas.vivencia ?? "")}</textarea></div>
-        <div class="campo"><label>Imagem do produto (mockup)</label><div class="dica">Opcional. Sem imagem, a página cria uma capa automática com o nome do produto. Para um mockup mais bonito, crie no Canva (busque por “mockup e-book”) e envie aqui.</div>
-          <div class="prints">${dados.respostas.mockup ? `<figure><img src="data:image/jpeg;base64,${dados.respostas.mockup}" alt="Imagem do produto" style="object-fit:contain;background:#fff"><button class="btn-leve" data-acao="tirar-mockup" aria-label="Tirar imagem">✕</button></figure>` : `<label class="add-print"><input type="file" accept="image/*" data-mockup hidden>${I.baixar}<span>Enviar imagem</span></label>`}</div></div>
-        <div class="campo"><label for="c-cor">Cor da página</label><select class="select" id="c-cor" data-campo="cor_pagina">${Object.entries(CORES_PAGINA).map(([k, n]) => `<option value="${k}" ${k === cor ? "selected" : ""}>${n}</option>`).join("")}</select></div>
         <button class="btn btn-pri" data-acao="publicar-pagina" data-id="${id}">${I.brilho} ${slug ? "Atualizar minha página" : "Publicar minha página"}</button>
         ${slug ? `<div class="pag-link"><b>${I.check} Sua página está no ar:</b><input class="input" readonly value="${esc(urlPagina(slug))}" aria-label="Link da página"><div class="linha-acoes"><button class="btn btn-sec" data-acao="copiar-link-pagina">${I.copiar} Copiar link</button><a class="btn btn-sec" href="${esc(urlPagina(slug))}" target="_blank" rel="noopener">Abrir página ${I.seta}</a></div><small class="dica-cel">Coloque este link na sua bio do Instagram.</small></div>` : ""}
       </div></div>`;
+  }
+
+  function dadosPaginaHTML() {
+    const r = dados.respostas, cor = r.cor_pagina || "rosa", sobre = r.mostrar_sobre !== "nao";
+    return `<section class="cartao dados-pagina">
+      <div class="cartao-cab"><span class="ic">${I.lista}</span><div><h4>Dados da sua página</h4><p class="desc">Preencha o básico. A Sócia escreve a página com estes dados. Salva sozinho. <span class="salvo" id="salvo"></span></p></div></div>
+      <div class="duas">
+        <div class="campo"><label for="c-produto">Nome do produto <span class="obrig">*</span></label><input class="input" id="c-produto" data-campo="produto" value="${esc(r.produto || "")}"></div>
+        <div class="campo"><label for="c-preco">Preço <span class="obrig">*</span></label><input class="input" id="c-preco" data-campo="preco" placeholder="Ex.: R$ 27 à vista ou 3x de R$ 9,90" value="${esc(r.preco || "")}"></div>
+        <div class="campo cheia"><label for="c-checkout">Link do checkout da Kiwify</label><div class="dica">Na Kiwify: Produtos → seu produto → Links → copie o link do checkout. Precisa dele só para publicar.</div><input class="input" id="c-checkout" data-campo="checkout" placeholder="https://pay.kiwify.com.br/..." value="${esc(r.checkout || "")}"></div>
+        <div class="campo cheia"><label for="c-bonus">Bônus (opcional)</label><div class="dica">Um por linha. Deixe em branco se não tiver bônus: a página fica sem essa parte.</div><textarea class="area" id="c-bonus" data-campo="bonus_pagina" placeholder="Ex.: Checklist da semana&#10;Lista de compras pronta">${esc(r.bonus_pagina || "")}</textarea></div>
+        <div class="campo cheia"><label class="check-linha"><input type="checkbox" data-sobre ${sobre ? "checked" : ""}> Mostrar a parte “Quem sou eu” na página</label>
+          ${sobre ? `<div class="dica" style="margin-top:8px">Sua história em 2 ou 3 linhas, em primeira pessoa.</div><textarea class="area" id="c-hist" data-campo="historia_pagina" placeholder="Ex.: Eu dormia mal e vivia cansada. Quando troquei o café da noite por chás naturais, tudo mudou...">${esc(r.historia_pagina ?? r.vivencia ?? "")}</textarea>` : ""}</div>
+        <div class="campo"><label>Imagem do produto (opcional)</label><div class="dica">Sem imagem, a página cria uma capa automática. Mockup bonito: Canva → “mockup e-book”.</div>
+          <div class="prints">${r.mockup ? `<figure><img src="data:image/jpeg;base64,${r.mockup}" alt="Imagem do produto" style="object-fit:contain;background:#fff"><button class="btn-leve" data-acao="tirar-mockup" aria-label="Tirar imagem">✕</button></figure>` : `<label class="add-print"><input type="file" accept="image/*" data-mockup hidden>${I.baixar}<span>Enviar imagem</span></label>`}</div></div>
+        <div class="campo"><label for="c-cor">Cor da página</label><select class="select" id="c-cor" data-campo="cor_pagina">${Object.entries(CORES_PAGINA).map(([k, n]) => `<option value="${k}" ${k === cor ? "selected" : ""}>${n}</option>`).join("")}</select></div>
+      </div></section>`;
   }
 
   async function publicarPagina(id) {
@@ -525,13 +538,16 @@
     if (!/^https:\/\/\S+$/.test(checkout)) return toast("Cole o link do checkout da Kiwify (começa com https://).");
     if (!sec.TITULO) return toast("O texto da página está sem o ### TITULO.");
     const hist = String(dados.respostas.historia_pagina ?? dados.respostas.vivencia ?? "").trim();
+    if (dados.respostas.mostrar_sobre === "nao") delete sec.SOBRE;
+    if (!String(dados.respostas.bonus_pagina || "").trim()) delete sec.BONUS;
     if (sec.SOBRE && /\[[^\]]*\]/.test(sec.SOBRE)) {
       if (!hist) { document.getElementById("c-hist")?.focus(); return toast("Escreva a sua história no campo “Sua história” antes de publicar."); }
       sec.SOBRE = sec.SOBRE.replace(/\[[^\]]*\]/g, hist);
-    } else if (hist && !sec.SOBRE) sec.SOBRE = hist;
+    } else if (hist && !sec.SOBRE && dados.respostas.mostrar_sobre !== "nao") sec.SOBRE = hist;
     const pendentes = Object.entries(sec).filter(([, t]) => /\[[^\]]{3,}\]/.test(t)).map(([k]) => k.toLowerCase());
     if (pendentes.length) return toast(`Complete os trechos entre [colchetes] no texto da página (${pendentes.join(", ")}).`);
-    if (!sec.BONUS || /^\s*[-*•]?\s*(nenhum|sem b[oô]nus|n[aã]o h[aá])/i.test(sec.BONUS)) delete sec.BONUS;
+    if (sec.BONUS && /^\s*[-*•]?\s*(nenhum|sem b[oô]nus|n[aã]o h[aá])/i.test(sec.BONUS)) delete sec.BONUS;
+    if (sec.SOBRE && /^\s*nenhum/i.test(sec.SOBRE)) delete sec.SOBRE;
     let slugAtual = dados.respostas.pagina_slug;
     if (!slugAtual) slugAtual = (slug(dados.respostas.produto || perfil.nome || "minha-pagina").slice(0, 40) || "pagina") + "-" + Math.random().toString(36).slice(2, 6);
     const conteudo = { secoes: sec, checkout, cor: dados.respostas.cor_pagina || "rosa", produto: dados.respostas.produto || "", autora: perfil.nome || "", arroba: dados.respostas.arroba || "", mockup: dados.respostas.mockup || "" };
@@ -568,9 +584,10 @@
 
   function usandoHTML(id) {
     const r = dados.respostas;
-    if (id === "nicho" || FERR[id]?.cat === "jornada") return "";
-    if (!String(r.nicho || "").trim()) return `<div class="usa aviso">Você ainda não definiu o seu nicho. <a href="#/inicio">Preencha em Meu negócio</a> ou use <a href="#/f/nicho">Descobrir meu nicho</a>: assim o texto sai sob medida.</div>`;
-    return `<div class="usa">Usando: <b>${esc(r.nicho)}</b>${r.produto ? ` · produto <b>${esc(r.produto)}</b>` : ""}${r.mecanismo ? ` · mecanismo <b>${esc(r.mecanismo)}</b>` : ""} · <a href="#/inicio">alterar</a></div>`;
+    if (FERR[id]?.cat === "jornada") return "";
+    if (!String(r.vivencia || r.nicho || "").trim()) return `<div class="usa aviso">Você ainda não respondeu as 4 perguntas da jornada. <a href="#/inicio">Responda aqui</a>: assim o texto sai sob medida para o seu nicho.</div>`;
+    const base = r.produto ? `produto <b>${esc(r.produto)}</b>` : r.nicho ? `<b>${esc(r.nicho)}</b>` : "as suas respostas da jornada";
+    return `<div class="usa">Usando: ${base} · <a href="#/conta">ajustar</a></div>`;
   }
 
   function caixaGerar(id) {
@@ -603,6 +620,7 @@
       <a class="voltar" href="${daJornada ? "#/inicio" : "#/funil"}">${I.voltar} ${daJornada ? "Voltar para a jornada" : "Todas as ferramentas do funil"}</a>
       <div class="olho">${esc(f.catTitulo)}</div><h1 class="titulo">${esc(f.titulo)}</h1><p class="lead">${esc(f.desc)}</p>
       ${f.formulas ? `<details class="det-formulas"><summary>Ver as fórmulas de capa da Vanessa</summary>${formulasHTML()}</details>` : ""}
+      ${f.pagina ? dadosPaginaHTML() : ""}
       ${caixaGerar(id)}
       ${resultadoHTML(id)}
       ${outras.length ? `<div class="secao-tit"><h3>Continue com</h3></div><div class="grade">${outras.map(cardFerr).join("")}</div>` : ""}`;
@@ -871,6 +889,7 @@
   });
 
   document.addEventListener("change", async (ev) => {
+    if (ev.target.matches("[data-sobre]")) { dados.respostas.mostrar_sobre = ev.target.checked ? "sim" : "nao"; salvar(); return render(); }
     if (ev.target.matches("[data-mockup]")) {
       const a = ev.target.files[0];
       if (a && a.type.startsWith("image/")) { try { dados.respostas.mockup = (await lerPrint(a, 900)).data; await salvarAgora(); } catch { toast("Não consegui ler a imagem."); } }

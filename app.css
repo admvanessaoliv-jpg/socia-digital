@@ -422,3 +422,7 @@ button.voltar{background:none;border:0;cursor:pointer}
 .contador{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--suave);margin:-14px 0 12px 58px}
 .respostas .area{min-height:110px}
 @media (max-width:920px){.contador{margin-left:0}}
+
+.check-linha{display:flex !important;align-items:center;gap:10px;cursor:pointer;font-weight:600}
+.check-linha input{width:20px;height:20px;accent-color:var(--neon)}
+.dados-pagina{margin-top:22px}

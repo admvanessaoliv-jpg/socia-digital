@@ -108,7 +108,7 @@
       ${sec("", "O que muda para você", md(s.VIRADA))}
       ${sec("", "O que você recebe", `<div class="caixa">${md(s.CONTEUDO)}</div>`)}
       ${sec("", "Bônus", s.BONUS && !/^\s*[-*•]?\s*(nenhum|sem b[oô]nus|n[aã]o h[aá])/i.test(s.BONUS) ? `<div class="caixa">${md(s.BONUS)}</div>` : "")}
-      ${sec("", d.autora ? `Quem sou eu: ${esc(d.autora)}` : "Quem sou eu", md(s.SOBRE) + (d.arroba ? `<p><strong>${esc(d.arroba.startsWith("@") ? d.arroba : "@" + d.arroba)}</strong> no Instagram</p>` : ""))}
+      ${s.SOBRE ? sec("", d.autora ? `Quem sou eu: ${esc(d.autora)}` : "Quem sou eu", md(s.SOBRE) + (d.arroba ? `<p><strong>${esc(d.arroba.startsWith("@") ? d.arroba : "@" + d.arroba)}</strong> no Instagram</p>` : "")) : ""}
       ${sec("", "", s.GARANTIA ? `<div class="garantia"><div class="selo">GARANTIA</div><div>${md(s.GARANTIA)}</div></div>` : "")}
       <section class="preco"><div class="wrap"><h2>Comece hoje</h2><div class="valor">${inl((s.PRECO || "").split("\n")[0])}</div>${md((s.PRECO || "").split("\n").slice(1).join("\n"))}${botao("Garantir o meu acesso")}</div></section>
       ${sec("", "Perguntas frequentes", faq(s.FAQ))}
