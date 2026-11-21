@@ -21,6 +21,7 @@
   const erros = {};
   let chatEnviando = false;
   let modoRecuperacao = false;
+  let confirmarReset = false;
 
 
   function novosDados() { return { respostas: {}, saidas: {}, concluidas: [], checks: {}, chat: [] }; }
@@ -163,6 +164,10 @@
   function demoTexto(corpo) {
     if (corpo.ferramenta === "chat") {
       return `## Que bom que você perguntou, ${primeiroNome()}!\n\nEste é o **modo demonstração**: quando o app estiver ligado ao Supabase, aqui vai aparecer a resposta real da Sócia, usando tudo o que você já preencheu nas etapas.\n\n- Ela lembra do seu nicho, da sua cliente e da sua oferta\n- Responde dúvidas sobre conteúdo, preço, Kiwify e lançamento\n- Cria textos na hora\n\n**Seu próximo passo:** continue preenchendo a etapa em que você está.`;
+    }
+    if (corpo.ferramenta === "nichos" || corpo.ferramenta === "ideias_produto") {
+      const n = corpo.ferramenta === "nichos" ? ["Mães que querem voltar a orar", "Mulheres ansiosas que buscam paz", "Esposas que querem organizar a casa"] : ["E-book: 21 Dias no Secreto", "Desafio: 7 Dias de Paz", "Minicurso: Rotina de Oração Real"];
+      return `Este é um exemplo do modo demonstração.\n\n${n.map((t, i) => `### OPÇÃO ${i + 1}: ${t}\n**Para quem:** exemplo de cliente.\n**A dor que você resolve:** exemplo de dor.\n**Por que você:** exemplo.`).join("\n\n")}\n\n## Minha recomendação\nComece pela opção 1: é a que mais combina com a sua história.`;
     }
     const f = FERR[corpo.ferramenta] || { titulo: "Material" };
     return `## ${f.titulo}\n\nEste é um **exemplo do modo demonstração**. Com o Supabase e a chave da IA configurados, a Sócia cria aqui o material completo a partir das suas respostas${corpo.extra ? ` sobre *${corpo.extra}*` : ""}.\n\n### Como vai ficar\n1. Um diagnóstico do que você contou\n2. O material pronto para copiar e usar\n3. Ajustes sugeridos para a sua cliente ideal\n\n> Tudo fica salvo em **Meus materiais**.\n\n---\n\n**Seu próximo passo:** leia, ajuste com a sua história real e marque a etapa como concluída.`;
@@ -382,6 +387,22 @@
     return `<div class="campo ${c.tipo === "area" ? "cheia" : ""}"><label for="c-${c.id}">${esc(c.rotulo)}${c.obrig ? ' <span class="obrig">*</span>' : ""}</label>${c.dica ? `<div class="dica">${esc(c.dica)}</div>` : ""}${input}</div>`;
   }
 
+  // Lê as "### OPÇÃO N: nome" da resposta da IA
+  function opcoes(texto) {
+    const partes = String(texto || "").split(/^#{2,4}\s*\**\s*OP[ÇC][ÃA]O\s*\d+\s*[:\-–.]\s*/mi);
+    if (partes.length < 3) return null;
+    let rec = "";
+    const ops = partes.slice(1).map((p) => {
+      const linhas = p.split("\n");
+      const titulo = linhas.shift().replace(/[*#]/g, "").trim();
+      let corpo = linhas.join("\n");
+      const k = corpo.search(/^##\s/m);
+      if (k >= 0) { rec += corpo.slice(k); corpo = corpo.slice(0, k); }
+      return { titulo, corpo: corpo.trim() };
+    });
+    return { intro: partes[0].trim(), ops, rec: rec.trim() };
+  }
+
   // Etapa liberada quando a anterior foi concluída
   const etapaLiberada = (id) => id === 1 || dados.concluidas.includes(id - 1);
   const faltando = (e) => e.campos.filter((c) => c.obrig && !String(dados.respostas[c.id] || "").trim());
@@ -391,6 +412,7 @@
     const fl = faltando(e);
     if (fl.length) return `Responda ${fl.length === 1 ? "a pergunta obrigatória" : `as ${fl.length} perguntas obrigatórias`} acima para liberar.`;
     if (f.extra && !String(dados.respostas["x_" + id] || "").trim()) return `Escreva o tema para liberar.`;
+    if (f.requer && !dados.respostas[f.requer]) return "Escolha uma das opções acima para liberar.";
     return "";
   }
   function atualizarBotoes() {
@@ -419,7 +441,7 @@
         <button class="btn-leve" data-acao="copiar" data-id="${id}">${I.copiar} Copiar</button>
         <button class="btn-leve" data-acao="baixar" data-id="${id}">${I.baixar} Baixar</button>
         <button class="btn-leve" data-acao="expandir" data-id="${id}">${I.expandir} Ver tudo</button></div>
-        <div class="texto-ia" id="t-${id}">${md(s.texto)}</div></div>`;
+        ${corpoSaida(id, s)}</div>`;
     return `<div class="ferr" id="f-${id}">
       <div class="ferr-cab"><span class="ic">${I.brilho}</span><div class="txt"><b>${esc(f.titulo)}</b><span>${esc(f.descricao)}</span></div>${botao}</div>
       <div class="motivo" id="m-${id}" ${motivo ? "" : 'style="display:none"'}>${esc(motivo)}</div>
@@ -427,6 +449,18 @@
       ${erros[id] ? `<div class="erro-ia">${esc(erros[id])}</div>` : ""}
       ${res}</div>`;
   }
+  function corpoSaida(id, s) {
+    const f = FERR[id], o = f.escolha ? opcoes(s.texto) : null;
+    if (!o) return `<div class="texto-ia" id="t-${id}">${md(s.texto)}</div>`;
+    const escolhido = dados.respostas[f.escolha];
+    return `<div class="texto-ia aberto" id="t-${id}">${o.intro ? md(o.intro) : ""}
+      <div class="opcoes">${o.ops.map((op, i) => {
+        const sel = escolhido === op.titulo;
+        return `<div class="opcao ${sel ? "sel" : ""}"><div class="op-tit"><span class="passo">${i + 1}</span><b>${esc(op.titulo)}</b></div>${md(op.corpo)}
+          <button class="btn ${sel ? "btn-pri" : "btn-sec"} btn-bloco" data-acao="escolher" data-id="${id}" data-i="${i}">${sel ? `${I.check} Escolhido` : esc(f.botaoEscolha || "Escolher")}</button></div>`;
+      }).join("")}</div>${o.rec ? md(o.rec) : ""}</div>`;
+  }
+
   function atualizarFerr(id) {
     const el = document.getElementById("f-" + id);
     if (el) el.outerHTML = ferrHTML(id);
@@ -437,8 +471,10 @@
     if (!e) { location.hash = "#/inicio"; return ""; }
     const feito = dados.concluidas.includes(e.id);
     const liberada = etapaLiberada(e.id);
-    const principal = e.ferramentas[0].id;
-    const podeConcluir = !!dados.saidas[principal];
+    const principal = e.principal || e.ferramentas[0].id, fp = FERR[principal];
+    const falta = !dados.saidas[principal] ? `Gere o “${esc(fp.titulo)}” para poder concluir.`
+      : fp.escolha && !dados.respostas[fp.escolha] ? "Escolha uma das opções para poder concluir." : "";
+    const podeConcluir = !falta;
     const checks = dados.checks[e.id] || [];
     const ant = ETAPAS.find((x) => x.id === n - 1), prox = ETAPAS.find((x) => x.id === n + 1);
     let passo = 0;
@@ -453,7 +489,7 @@
       ${e.checklist ? `${tituloPasso("Coloque em prática", "Marque o que você já fez.")}
         <section class="cartao"><ul class="checklist">${e.checklist.map((c, i) => `<li class="${checks.includes(i) ? "ok" : ""}" data-acao="check" data-etapa="${e.id}" data-i="${i}"><span class="caixa">${checks.includes(i) ? I.check : ""}</span><span>${esc(c)}</span></li>`).join("")}</ul></section>` : ""}
       <div class="concluir ${feito ? "feito" : ""}">
-        <div><b>${feito ? "Etapa concluída ✓" : "Terminou esta etapa?"}</b><p>${feito ? "Você pode voltar aqui quando quiser para ajustar." : podeConcluir ? (prox ? `Marque como concluída para liberar a etapa ${prox.id}.` : "Marque como concluída para finalizar o seu mapa.") : `Gere o “${esc(e.ferramentas[0].titulo)}” para poder concluir.`}</p></div>
+        <div><b>${feito ? "Etapa concluída ✓" : "Terminou esta etapa?"}</b><p>${feito ? "Você pode voltar aqui quando quiser para ajustar." : podeConcluir ? (prox ? `Marque como concluída para liberar a etapa ${prox.id}.` : "Marque como concluída para finalizar o seu mapa.") : falta}</p></div>
         <button class="btn ${feito ? "btn-sec" : "btn-pri"}" data-acao="concluir" data-etapa="${e.id}" ${!feito && !podeConcluir ? "disabled" : ""}>${feito ? "Desmarcar" : "Marcar como concluída"}</button>
       </div>
       <div class="nav-etapas">
@@ -506,6 +542,8 @@
       <section class="cartao"><h4>Criações de hoje</h4><p class="desc">Você pode gerar até ${uso.limite} materiais ou respostas por dia. Amanhã renova.</p>
         <div class="uso"><i style="width:${p}%"></i></div><small style="color:var(--suave)">${uso.hoje} de ${uso.limite} usadas hoje</small></section>
       ${DEMO ? "" : `<section class="cartao"><h4>Trocar senha</h4><div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px"><input class="input" id="nova-senha" type="password" placeholder="Nova senha (mínimo 6)" style="flex:1;min-width:200px"><button class="btn btn-sec" data-acao="trocar-senha">Trocar</button></div></section>`}
+      <section class="cartao"><h4>Recomeçar do zero</h4><p class="desc" style="margin-bottom:14px">Apaga as suas respostas e os materiais e volta para a etapa 1.</p>
+        <button class="btn btn-sec" data-acao="recomecar">${confirmarReset ? "Clique de novo para apagar tudo" : "Recomeçar meu mapa"}</button></section>
       <div style="display:flex;gap:10px;flex-wrap:wrap">${C.SUPORTE_URL ? `<a class="btn btn-sec" href="${esc(C.SUPORTE_URL)}" target="_blank" rel="noopener">Falar com o suporte</a>` : ""}<button class="btn btn-leve" data-acao="sair">${I.sair} Sair</button></div>`;
   }
 
@@ -543,6 +581,20 @@
         return;
       }
       case "copiar-bloco": return copiar(el.closest(".bloco-cod")?.querySelector("pre")?.textContent || "");
+      case "recomecar": {
+        if (!confirmarReset) { confirmarReset = true; return render(); }
+        confirmarReset = false; dados = novosDados(); await salvarAgora();
+        toast("Mapa recomeçado!"); location.hash = "#/etapa/1"; return;
+      }
+      case "escolher": {
+        const f = FERR[id], o = opcoes(dados.saidas[id]?.texto), op = o?.ops[Number(el.dataset.i)];
+        if (!op) return;
+        dados.respostas[f.escolha] = op.titulo;
+        dados.respostas[f.escolha + "_detalhe"] = op.corpo;
+        await salvarAgora();
+        toast(`Escolhido: ${op.titulo} ✨`);
+        return render();
+      }
       case "enviar": return enviarChat();
       case "sugestao": { const t = document.getElementById("chat-texto"); t.value = el.dataset.txt; return enviarChat(); }
       case "limpar-chat": dados.chat = []; salvar(); return render();

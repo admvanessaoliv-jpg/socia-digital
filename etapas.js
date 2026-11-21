@@ -1,62 +1,85 @@
 // =====================================================================
 // AS 6 ETAPAS DO MAPA DO INFOPRODUTO VIRAL (em ordem)
-// Cada etapa: 1) responda  2) gere com a Sócia  3) coloque em prática
-// "obrig: true" = pergunta obrigatória para liberar o botão da Sócia.
-// A primeira ferramenta de cada etapa é a entrega principal.
+// A aluna responde só perguntas fáceis sobre ELA.
+// A Sócia descobre nicho, cliente e produto e dá opções para ela escolher.
+//   obrig: true          -> pergunta obrigatória para liberar o botão
+//   escolha: "campo"     -> a resposta vira opções clicáveis
+//   requer: "campo"      -> só libera depois que ela escolheu
+//   principal            -> o que precisa estar pronto para concluir a etapa
 // (Os comandos da IA ficam no Supabase, em functions/socia-ia.)
 // =====================================================================
 window.ETAPAS = [
   {
-    id: 1, titulo: "Sua história", subtitulo: "Descubra o que só você pode ensinar",
-    intro: "Seu negócio começa na sua história. Responda com sinceridade, sem se preocupar em escrever bonito: a Sócia organiza para você.",
+    id: 1, titulo: "Sobre você", subtitulo: "Descubra o seu caminho",
+    intro: "Responda 3 perguntas simples sobre você. Você NÃO precisa saber qual é o seu nicho nem quem é a sua cliente: a Sócia descobre e te dá 3 caminhos para escolher.",
+    principal: "nichos",
     campos: [
-      { id: "historia", rotulo: "Conte sua história em poucas linhas", tipo: "area", obrig: true, dica: "De onde você veio, o que mudou na sua vida, o que te trouxe até aqui." },
-      { id: "experiencias", rotulo: "O que você já viveu e superou que pode ajudar outras mulheres?", tipo: "area", obrig: true, dica: "Ex.: saí das dívidas, venci a ansiedade, organizei minha casa com 4 filhos, voltei a orar..." },
-      { id: "habilidades", rotulo: "Em que as pessoas sempre te pedem ajuda?", tipo: "area" },
-      { id: "tempo", rotulo: "Quanto tempo por dia você tem para o seu negócio?", tipo: "select", opcoes: ["Até 1 hora", "1 a 2 horas", "2 a 4 horas", "Tempo integral"] },
+      { id: "historia", rotulo: "Conte um pouco da sua história", tipo: "area", obrig: true, dica: "Do seu jeito: de onde você veio, o que mudou na sua vida, sua fase atual." },
+      { id: "experiencias", rotulo: "O que você já viveu, superou ou aprendeu na vida?", tipo: "area", obrig: true, dica: "Ex.: saí das dívidas, venci a ansiedade, emagreci, organizo a casa com 4 filhos, voltei a orar, sei cozinhar bem..." },
+      { id: "gosta", rotulo: "Do que você gosta de falar ou fazer? Em que as pessoas te pedem ajuda?", tipo: "area" },
+      { id: "tempo", rotulo: "Quanto tempo por dia você tem?", tipo: "select", opcoes: ["Até 1 hora", "1 a 2 horas", "2 a 4 horas", "Tempo integral"] },
     ],
     ferramentas: [
-      { id: "mapa_dons", titulo: "Mapa dos Meus Dons", descricao: "3 caminhos de nicho a partir da sua história e por qual começar." },
+      { id: "nichos", titulo: "Meus 3 Caminhos", descricao: "A Sócia lê sua história e sugere 3 nichos, já com a cliente ideal de cada um. Você só escolhe.", escolha: "nicho", botaoEscolha: "Escolher este caminho" },
     ],
   },
   {
-    id: 2, titulo: "Sua cliente", subtitulo: "Para quem é o seu produto",
-    intro: "Quem tenta falar com todo mundo não vende para ninguém. Escolha um dos caminhos do Mapa dos Dons e descreva a mulher que você vai ajudar.",
+    id: 2, titulo: "Seu Instagram", subtitulo: "Arrume a vitrine antes de vender",
+    intro: "Com o seu caminho escolhido, a Sócia monta o seu perfil: para quem você fala, nome, bio, foto, destaques e os posts fixados.",
+    principal: "perfil_instagram",
     campos: [
-      { id: "nicho", rotulo: "Qual caminho (nicho) você escolheu?", tipo: "texto", obrig: true },
-      { id: "publico", rotulo: "Quem é a sua cliente?", tipo: "area", obrig: true, dica: "Ex.: mães cristãs de 28 a 45 anos, cansadas e sem tempo para Deus" },
-      { id: "dores", rotulo: "O que tira o sono dela?", tipo: "area" },
+      { id: "arroba", rotulo: "Seu @ no Instagram", tipo: "texto", obrig: true, dica: "Se ainda não tem um perfil profissional, coloque o @ que você pretende usar." },
+      { id: "aparece", rotulo: "Você aparece nos vídeos?", tipo: "select", obrig: true, opcoes: ["Sim, falo para a câmera", "Às vezes", "Prefiro não aparecer (só mãos, voz ou texto)"] },
     ],
     ferramentas: [
-      { id: "cliente_ideal", titulo: "Retrato da Cliente Ideal", descricao: "Dores, desejos, objeções e as palavras exatas que ela usa." },
-    ],
-  },
-  {
-    id: 3, titulo: "Seu produto", subtitulo: "O que você vai vender",
-    intro: "Seu primeiro produto não precisa ser enorme. Precisa entregar uma transformação clara e rápida. A Sócia monta o plano; você cria no Canva ou grava no celular.",
-    campos: [
-      { id: "formato", rotulo: "Qual formato você prefere?", tipo: "select", obrig: true, opcoes: ["E-book / guia", "Minicurso em vídeo", "Desafio de X dias", "Mentoria em grupo", "Ainda não sei: me ajude a escolher"] },
-      { id: "transformacao", rotulo: "Qual transformação ela vai ter? (de onde para onde)", tipo: "area", obrig: true, dica: "Ex.: de ansiosa e sem rotina de oração para 15 minutos diários de paz com Deus" },
-    ],
-    ferramentas: [
-      { id: "plano_produto", titulo: "Plano do Produto", descricao: "Nome, promessa, sumário completo e o passo a passo para criar." },
+      { id: "perfil_instagram", titulo: "Meu Perfil Pronto", descricao: "Sua cliente ideal, nome do perfil, bio, foto, destaques e 3 posts fixados." },
     ],
     checklist: [
-      "Escolhi o nome do produto",
+      "Mudei o nome do perfil e a bio",
+      "Coloquei uma foto de perfil clara, com o rosto (se aparecer)",
+      "Criei os destaques",
+      "Publiquei e fixei os 3 posts",
+    ],
+  },
+  {
+    id: 3, titulo: "Conteúdo para atrair", subtitulo: "Junte as pessoas certas",
+    intro: "Antes de vender, atraia. Poste por pelo menos 7 dias falando com a sua cliente: é assim que ela começa a confiar em você.",
+    principal: "conteudo_7",
+    campos: [],
+    ferramentas: [
+      { id: "conteudo_7", titulo: "7 Dias de Conteúdo", descricao: "Uma semana de posts com gancho, roteiro curto e legenda." },
+      { id: "roteiro_reels", titulo: "Roteiro de Reels", descricao: "Um roteiro pronto sobre o tema que você quiser.", extra: { rotulo: "Tema do Reels", placeholder: "Ex.: 3 sinais de que você está vivendo no automático" } },
+    ],
+    checklist: [
+      "Postei os 7 dias",
+      "Respondi os comentários e o direct",
+    ],
+  },
+  {
+    id: 4, titulo: "Seu produto", subtitulo: "O que você vai vender",
+    intro: "A Sócia sugere 3 produtos que combinam com você e com a sua cliente. Você escolhe um e ela monta o plano completo para você criar no Canva ou gravar no celular.",
+    principal: "plano_produto",
+    campos: [
+      { id: "formato", rotulo: "Tem preferência de formato?", tipo: "select", opcoes: ["A Sócia escolhe para mim", "E-book / guia", "Minicurso em vídeo", "Desafio de X dias", "Mentoria em grupo"] },
+    ],
+    ferramentas: [
+      { id: "ideias_produto", titulo: "3 Ideias de Produto", descricao: "Nome, promessa e preço sugerido de cada uma. Você escolhe uma.", escolha: "produto", botaoEscolha: "Escolher este produto" },
+      { id: "plano_produto", titulo: "Plano do Produto", descricao: "Sumário completo e o passo a passo para criar.", requer: "produto" },
+    ],
+    checklist: [
       "Criei o produto (no Canva ou gravei as aulas)",
       "Exportei o PDF / subi os vídeos",
     ],
   },
   {
-    id: 4, titulo: "Sua oferta", subtitulo: "Preço, bônus e página de vendas",
-    intro: "A oferta é o que faz a cliente pensar: “isso é exatamente o que eu preciso”. Depois, você cadastra tudo na Kiwify.",
+    id: 5, titulo: "Oferta e Kiwify", subtitulo: "Preço, bônus e página de vendas",
+    intro: "A Sócia monta a sua oferta e o texto da página de vendas. Depois, você cadastra tudo na Kiwify.",
+    principal: "oferta",
     campos: [
-      { id: "nome_produto", rotulo: "Nome do produto", tipo: "texto", obrig: true },
-      { id: "preco", rotulo: "Que preço você está pensando?", tipo: "texto", obrig: true, dica: "Ex.: R$ 47 / R$ 97 / ainda não sei" },
-      { id: "bonus", rotulo: "Ideias de bônus (opcional)", tipo: "area" },
+      { id: "preco", rotulo: "Já pensou em um preço?", tipo: "texto", dica: "Pode deixar em branco: a Sócia sugere." },
     ],
     ferramentas: [
-      { id: "oferta", titulo: "Oferta Irresistível", descricao: "Promessa, bônus, garantia e como apresentar o preço." },
+      { id: "oferta", titulo: "Minha Oferta", descricao: "Promessa, bônus, garantia e preço." },
       { id: "pagina_vendas", titulo: "Texto da Página de Vendas", descricao: "Todas as partes da página, prontas para colar." },
     ],
     checklist: [
@@ -67,21 +90,9 @@ window.ETAPAS = [
     ],
   },
   {
-    id: 5, titulo: "Seu perfil", subtitulo: "Atrair as pessoas certas",
-    intro: "Seu perfil é a sua loja. Primeiro organize a vitrine, depois poste com estratégia: alcance, conexão e venda.",
-    campos: [
-      { id: "arroba", rotulo: "Seu @ no Instagram", tipo: "texto", obrig: true },
-      { id: "aparece", rotulo: "Você aparece nos vídeos?", tipo: "select", obrig: true, opcoes: ["Sim, falo para a câmera", "Às vezes", "Prefiro não aparecer (só mãos, voz ou texto)"] },
-    ],
-    ferramentas: [
-      { id: "bio_destaques", titulo: "Bio e Destaques", descricao: "Bio, nome pesquisável e destaques do perfil." },
-      { id: "conteudo_7", titulo: "7 Dias de Conteúdo", descricao: "Uma semana de posts com gancho, roteiro curto e legenda." },
-      { id: "roteiro_reels", titulo: "Roteiro de Reels", descricao: "Um roteiro pronto sobre o tema que você quiser.", extra: { rotulo: "Tema do Reels", placeholder: "Ex.: 3 sinais de que você está vivendo no automático" } },
-    ],
-  },
-  {
-    id: 6, titulo: "Seu lançamento", subtitulo: "Publicar e vender",
+    id: 6, titulo: "Lançamento", subtitulo: "Publicar e vender",
     intro: "Hora de abrir as portas. Siga o plano dia a dia, venda com verdade e responda o direct com carinho.",
+    principal: "plano_lancamento",
     campos: [
       { id: "data_lancamento", rotulo: "Quando você quer lançar?", tipo: "texto", obrig: true, dica: "Ex.: 1º de dezembro" },
       { id: "tipo_lancamento", rotulo: "Como vai vender?", tipo: "select", obrig: true, opcoes: ["Lançamento de 7 dias (carrinho abre e fecha)", "Venda sempre aberta"] },
