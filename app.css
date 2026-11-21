@@ -439,3 +439,15 @@ button.voltar{background:none;border:0;cursor:pointer}
 .missao{border-color:var(--neon-borda);background:linear-gradient(135deg,#0F1513,#0B100E);margin-top:16px}
 .missao h4{margin-top:6px}
 @media (max-width:920px){.aula{margin-left:0}}
+
+/* Créditos */
+.lat-cred{display:block;margin:10px 14px 6px;padding:10px 12px;border:1px solid var(--linha);border-radius:12px;text-decoration:none;color:inherit}
+.lat-cred small{display:block;color:var(--suave);font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+.lat-cred b{font-family:"Space Grotesk",sans-serif;font-size:15px}
+.lat-cred .uso{display:block;margin:8px 0 0}
+.aviso-cred{border:1px solid rgba(57,255,136,.45);background:rgba(57,255,136,.07);border-radius:14px;padding:14px 16px;margin-bottom:20px}
+.aviso-cred p{margin:0 0 10px;font-weight:600}
+.aviso-cred .linha-acoes{margin:0}
+.planos-lista{display:flex;flex-direction:column;gap:10px;margin:18px 0 8px}
+.planos-lista .btn{text-align:center;justify-content:center}
+.custo{color:var(--suave);font-size:12px}

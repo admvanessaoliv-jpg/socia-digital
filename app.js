@@ -19,7 +19,13 @@
   let usuaria = null; // { id, email }
   let perfil = { nome: "", email: "" };
   let dados = novosDados();
-  let uso = { hoje: 0, limite: 15 };
+  let uso = { usados: 0, limite: 100, plano: "bonus", ate: new Date(Date.now() + 30 * 864e5).toISOString() };
+  const CUSTO = { raio_x: 2, raio_mensal: 2, blueprint: 2 };
+  const NOME_PLANO = { bonus: "Bônus do curso (30 dias)", essencial: "Plano Essencial", completo: "Plano Completo", admin: "Administradora" };
+  const restantes = () => Math.max(0, uso.limite - uso.usados);
+  const diasFaltando = () => Math.ceil((new Date(uso.ate) - Date.now()) / 864e5);
+  const diaBR = (iso) => new Date(iso).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+  const botoesPlanos = (classe = "") => (C.PLANOS || []).map((p, i) => `<a class="btn ${i ? "btn-sec" : "btn-pri"} ${classe}" href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.nome)} · ${esc(p.preco)} · ${esc(String(p.criacoes))} criações</a>`).join("");
   const gerando = {};
   const erros = {};
   let chatEnviando = false;
@@ -160,7 +166,7 @@
   async function chamarIA(corpo) {
     if (DEMO) {
       await new Promise((r) => setTimeout(r, 1500));
-      uso.hoje++;
+      uso.usados = Math.min(uso.limite, uso.usados + (CUSTO[corpo.ferramenta] || 1));
       return demoTexto(corpo);
     }
     await salvarAgora(); // a IA lê o projeto direto do banco
@@ -174,11 +180,13 @@
     });
     let j = {};
     try { j = await r.json(); } catch {}
+    if (j.limite) { uso.limite = j.limite; if (typeof j.usados === "number") uso.usados = j.usados; }
+    if (j.bloqueio === "sem_creditos") uso.usados = Math.max(uso.usados, uso.limite);
+    if (j.bloqueio === "expirado" || j.bloqueio === "inativo") { setTimeout(() => telaBloqueada(j.bloqueio), 2500); }
     if (!r.ok) throw new Error(j.erro || "Não consegui falar com a Sócia agora. Tente de novo.");
     console.info("Sócia respondeu:", r.status, j);
     if (!String(j.texto || "").trim()) throw new Error("A Sócia respondeu vazio. Tente de novo em alguns segundos.");
-    if (j.usadosHoje) uso.hoje = j.usadosHoje;
-    if (j.limite) uso.limite = j.limite;
+    if (j.plano) uso.plano = j.plano;
     return j.texto || "";
   }
 
@@ -225,6 +233,7 @@
     }
     gerando[id] = false;
     atualizarFerr(id);
+    atualizarContador();
   }
 
   async function enviarChat() {
@@ -321,10 +330,16 @@
     };
   }
 
-  function telaBloqueada() {
-    $app.innerHTML = `<div class="login"><section class="login-arte"><div class="topo"><div class="marca-sd">SD</div><span>${esc(C.NOME_CURSO)}</span></div><div><h1>Seu acesso está <em>pausado</em>.</h1></div><div class="rodape"></div></section>
-    <section class="login-form"><div style="max-width:380px"><h2>Acesso inativo</h2><p class="sub">${(C.PLANOS||[]).length ? "Para continuar criando com a sua Sócia, escolha um plano. Assine com o mesmo e-mail que você usa aqui." : "Se você acha que isso é um engano, fale com o suporte."}</p>
-    ${(C.PLANOS||[]).map((p, i) => `<a class="btn ${i ? "btn-sec" : "btn-pri"}" style="display:block;text-align:center;margin-bottom:10px" href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.nome)} · ${esc(p.preco)} · ${esc(String(p.criacoes))} criações</a>`).join("")}
+  function telaBloqueada(motivo) {
+    usuaria = null;
+    const titulo = motivo === "expirado" ? (uso.plano === "bonus" ? "Seus 30 dias de bônus <em>terminaram</em>." : "Sua assinatura <em>venceu</em>.") : "Seu acesso está <em>pausado</em>.";
+    const texto = (C.PLANOS || []).length
+      ? (motivo === "expirado" && uso.plano === "bonus" ? "Tudo o que você criou continua salvo. Escolha um plano para continuar criando com a sua Sócia." : "Tudo o que você criou continua salvo. Escolha um plano para voltar a criar.") + " Assine com o mesmo e-mail que você usa aqui."
+      : "Se você acha que isso é um engano, fale com o suporte.";
+    $app.innerHTML = `<div class="login"><section class="login-arte"><div class="topo"><div class="marca-sd">SD</div><span>${esc(C.NOME_CURSO)}</span></div><div><h1>${titulo}</h1></div><div class="rodape"></div></section>
+    <section class="login-form"><div style="max-width:400px"><h2>${motivo === "expirado" ? "Continue com a sua Sócia" : "Acesso inativo"}</h2><p class="sub">${esc(texto)}</p>
+    <div class="planos-lista">${botoesPlanos()}</div>
+    <p class="sub" style="font-size:13px;margin-top:6px">Depois de assinar, saia e entre de novo para liberar.</p>
     ${C.SUPORTE_URL ? `<a class="btn btn-leve" href="${esc(C.SUPORTE_URL)}" target="_blank" rel="noopener">Falar com o suporte</a>` : ""}
     <div class="links"><a href="#" data-acao="sair">Sair</a></div></div></section></div>`;
   }
@@ -353,12 +368,34 @@
         ${item("materiais", I.pasta, "Meus materiais", r.nome === "materiais")}
         ${grupos}
       </nav>
+      <a class="lat-cred" id="lat-cred" href="#/conta">${contadorHTML()}</a>
       <div class="lat-rodape">
         <div class="avatar">${esc(primeiroNome().charAt(0).toUpperCase())}</div>
         <a class="quem" href="#/conta"><b>${esc(perfil.nome || "Minha conta")}</b><small>Minha conta</small></a>
         <button class="btn-leve" data-acao="sair" title="Sair">${I.sair}</button>
       </div>
     </aside>`;
+  }
+
+  function contadorHTML() {
+    if (uso.plano === "admin") return `<small>Criações</small><b>Sem limite</b>`;
+    const pc = Math.min(100, Math.round((uso.usados / uso.limite) * 100));
+    return `<small>Criações disponíveis</small><b>${restantes()} de ${uso.limite}</b><span class="uso"><i style="width:${100 - pc}%"></i></span>`;
+  }
+  function atualizarContador() {
+    const el = document.getElementById("lat-cred"); if (el) el.innerHTML = contadorHTML();
+    const av = document.getElementById("aviso-cred"); if (av) av.outerHTML = avisoHTML();
+  }
+  function avisoHTML() {
+    if (DEMO || uso.plano === "admin") return `<div id="aviso-cred"></div>`;
+    const r = restantes(), d = diasFaltando();
+    let msg = "";
+    if (r === 0) msg = uso.plano === "bonus" ? "Você usou todas as criações do seu bônus. Assine um plano para continuar." : uso.plano === "completo" ? `Você usou todas as criações deste mês. Elas renovam no próximo pagamento (${diaBR(uso.ate)}).` : "Você usou as criações deste mês. Passe para o Plano Completo para ter 100 por mês.";
+    else if (uso.plano === "bonus" && d <= 3) msg = `Seu bônus de 30 dias termina ${d <= 1 ? "amanhã" : `em ${d} dias`} (${diaBR(uso.ate)}). Assine um plano para não parar de criar.`;
+    else if (r <= 10) msg = `Faltam só ${r} criações ${uso.plano === "bonus" ? "do seu bônus" : "deste mês"}.`;
+    if (!msg) return `<div id="aviso-cred"></div>`;
+    const planos = uso.plano === "completo" ? "" : uso.plano === "essencial" ? (C.PLANOS || []).filter((p) => p.criacoes > 60).map((p) => `<a class="btn btn-pri" href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.nome)} · ${esc(p.preco)} · ${p.criacoes} criações</a>`).join("") : botoesPlanos();
+    return `<div class="aviso-cred" id="aviso-cred"><p>${esc(msg)}</p>${planos ? `<div class="linha-acoes">${planos}</div>` : ""}</div>`;
   }
 
   function render() {
@@ -377,7 +414,7 @@
       <div class="veu" data-acao="fechar-menu"></div>
       <main class="principal">
         <div class="barra-movel"><button data-acao="menu" aria-label="Abrir menu">${I.menu}</button><div class="marca-sd">SD</div><b>Sócia Digital</b></div>
-        <div class="conteudo">${corpo}</div>
+        <div class="conteudo">${avisoHTML()}${corpo}</div>
       </main>
     </div>`;
     if (r.nome === "inicio") {
@@ -614,6 +651,7 @@
         <div class="linha-acoes" style="margin-top:${campo ? 4 : 0}px;align-items:center">
           ${g ? `<button class="btn btn-pri" disabled>Criando...</button>` : `<button class="btn ${s ? "btn-sec" : "btn-pri"}" id="b-${id}" data-acao="gerar" data-id="${id}" ${motivo ? "disabled" : ""}>${I.brilho} ${s ? "Gerar de novo" : "Gerar com a Sócia"}</button>`}
           <span class="motivo" id="m-${id}">${esc(motivo)}</span>
+          ${!motivo && !g && CUSTO[id] && uso.plano !== "admin" ? `<small class="custo">usa ${CUSTO[id]} criações</small>` : ""}
         </div>
       </section>
       ${erros[id] ? `<div class="erro-ia" style="border-radius:12px;margin-bottom:16px">${esc(erros[id])}</div>` : ""}`;
@@ -769,7 +807,8 @@
 
   // ------------------------------------------------------------------ Conta
   function viewConta() {
-    const p = Math.min(100, Math.round((uso.hoje / uso.limite) * 100));
+    const p = Math.min(100, Math.round((uso.usados / uso.limite) * 100));
+    const renova = uso.plano === "bonus" ? `Seu bônus vale até ${diaBR(uso.ate)}.` : uso.plano === "admin" ? "Conta sem limite." : `Renova no próximo pagamento (até ${diaBR(uso.ate)}).`;
     return `<div class="olho">Minha conta</div><h1 class="titulo">Olá, <em>${esc(primeiroNome())}</em></h1><p class="lead" style="margin-bottom:28px">${esc(perfil.email)}</p>
       <section class="cartao"><h4>Como você quer ser chamada?</h4><p class="desc" style="margin-bottom:16px">A Sócia usa este nome nas conversas.</p>
         <div style="display:flex;gap:10px;flex-wrap:wrap"><input class="input" id="nome-conta" value="${esc(perfil.nome)}" style="flex:1;min-width:200px"><button class="btn btn-pri" data-acao="salvar-nome">Salvar</button></div></section>
@@ -780,8 +819,9 @@
           <div class="campo"><label for="c-produto">Meu produto</label><input class="input" id="c-produto" data-campo="produto" value="${esc(dados.respostas.produto || "")}"></div>
         </div>
         <button class="btn btn-pri" data-acao="salvar-negocio">${I.check} Salvar</button></section>
-      <section class="cartao"><h4>Criações de hoje</h4><p class="desc">Você pode gerar até ${uso.limite} materiais ou respostas por dia. Amanhã renova.</p>
-        <div class="uso"><i style="width:${p}%"></i></div><small style="color:var(--suave)">${uso.hoje} de ${uso.limite} usadas hoje</small></section>
+      <section class="cartao"><h4>Minhas criações · ${esc(NOME_PLANO[uso.plano] || uso.plano)}</h4><p class="desc">Cada material ou resposta da Sócia usa 1 criação. Raio-X, Raio-X do mês e Plano do produto usam 2. ${esc(renova)}</p>
+        ${uso.plano === "admin" ? "" : `<div class="uso"><i style="width:${p}%"></i></div><small style="color:var(--suave)">Você tem ${restantes()} de ${uso.limite} criações</small>`}
+        ${uso.plano === "admin" || uso.plano === "completo" || !(C.PLANOS || []).length ? "" : `<div class="linha-acoes" style="margin-top:14px">${uso.plano === "essencial" ? (C.PLANOS || []).filter((x) => x.criacoes > 60).map((x) => `<a class="btn btn-sec" href="${esc(x.link)}" target="_blank" rel="noopener">Passar para o ${esc(x.nome)} · ${esc(x.preco)}</a>`).join("") : botoesPlanos()}</div>`}</section>
       ${DEMO ? "" : `<section class="cartao"><h4>Trocar senha</h4><div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px"><input class="input" id="nova-senha" type="password" placeholder="Nova senha (mínimo 6)" style="flex:1;min-width:200px"><button class="btn btn-sec" data-acao="trocar-senha">Trocar</button></div></section>`}
       <section class="cartao"><h4>Recomeçar do zero</h4><p class="desc" style="margin-bottom:14px">Apaga a sua jornada, o seu negócio e todos os materiais.</p>
         <button class="btn btn-sec" data-acao="recomecar">${confirmarReset ? "Clique de novo para apagar tudo" : "Recomeçar do zero"}</button></section>
@@ -971,16 +1011,16 @@
     const { data } = await sb.auth.getUser();
     if (!data?.user) return telaLogin();
     usuaria = { id: data.user.id, email: data.user.email };
-    const [pf, pj, us] = await Promise.all([
-      sb.from("perfis").select("nome, email, ativo").eq("id", usuaria.id).maybeSingle(),
+    const [pf, pj] = await Promise.all([
+      sb.from("perfis").select("nome, email, ativo, plano, limite_mes, usados_mes, acesso_ate").eq("id", usuaria.id).maybeSingle(),
       sb.from("projetos").select("dados").eq("user_id", usuaria.id).maybeSingle(),
-      sb.from("uso_ia").select("total").eq("user_id", usuaria.id).eq("dia", hojeSP()).maybeSingle(),
     ]);
-    if (pf.data && pf.data.ativo === false) { usuaria = null; return telaBloqueada(); }
+    if (pf.data?.limite_mes) uso = { usados: pf.data.usados_mes || 0, limite: pf.data.limite_mes, plano: pf.data.plano || "bonus", ate: pf.data.acesso_ate };
+    if (pf.data && pf.data.ativo === false) return telaBloqueada("inativo");
+    if (pf.data?.acesso_ate && new Date(pf.data.acesso_ate) < new Date()) return telaBloqueada("expirado");
     perfil = { nome: pf.data?.nome || (usuaria.email || "").split("@")[0], email: usuaria.email };
     dados = normalizar(pj.data?.dados);
     if (!pj.data) await sb.from("projetos").insert({ user_id: usuaria.id, dados });
-    uso.hoje = us.data?.total || 0;
     if (!location.hash || location.hash === "#") location.hash = "#/inicio";
     render();
   }
