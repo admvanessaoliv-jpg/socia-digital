@@ -9,5 +9,7 @@ window.CONFIG = {
   NOME_CURSO: "Mapa do Infoproduto Viral",
   MENTORA: "Vanessa Oliveira",
   SUPORTE_URL: "",         // ex.: link do seu WhatsApp ou e-mail de suporte
-  LINK_COMPRA: "",         // link da Kiwify do curso (aparece na tela de login)
+  LINK_COMPRA: "",
+  // Links das aulas do curso (aparece o botão "Assistir à aula" em cada fase quando preenchido)
+  AULAS: { clareza: "", produto: "", essencia: "", perfil: "", funil: "" },         // link da Kiwify do curso (aparece na tela de login)
 };

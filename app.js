@@ -30,16 +30,23 @@
   const autoFeito = new Set();
   // Quando as respostas da Clareza mudam, os produtos e o plano antigos deixam de valer
   const DEPENDE = { produtos_virais: ["blueprint", "ajustes_perfil"], blueprint: ["ajustes_perfil"] };
+  const DEP_CAMPO = {
+    vivencia: ["produtos_virais", "blueprint", "manifesto", "ajustes_perfil"], publico: ["produtos_virais", "blueprint", "manifesto", "ajustes_perfil"],
+    ideia_texto: ["produtos_virais", "blueprint", "manifesto", "ajustes_perfil"], formato: ["produtos_virais", "blueprint", "manifesto", "ajustes_perfil"],
+    produto: ["manifesto", "ajustes_perfil"], crenca: ["manifesto", "ajustes_perfil"], limites: ["manifesto", "ajustes_perfil"],
+    tom: ["manifesto", "ajustes_perfil"], textos_voz: ["manifesto", "ajustes_perfil"],
+  };
+  const proxDe = (p) => (p.proximoAvancado && dados.respostas.caminho === "avancado" ? p.proximoAvancado : p.proximo);
   function limparDepois(ids) {
     ids.forEach((id) => { delete dados.saidas[id]; autoFeito.delete(id); });
   } // imagens do Raio-X (ficam só na tela, não são salvas)
 
 
-  function novosDados() { return { respostas: {}, saidas: {}, checks: {}, chat: [], jornada: { passo: "q1", trilha: [], funil: false } }; }
+  function novosDados() { return { respostas: {}, saidas: {}, checks: {}, chat: [], jornada: { passo: "bemvinda", trilha: [], funil: false } }; }
   function normalizar(d) {
     const n = novosDados();
     if (d && typeof d === "object") Object.keys(n).forEach((k) => { if (d[k] != null) n[k] = d[k]; });
-    if (!n.jornada || !(window.JORNADA || []).some((p) => p.id === n.jornada.passo)) n.jornada = { passo: "q1", trilha: [], funil: !!n.jornada?.funil };
+    if (!n.jornada || !(window.JORNADA || []).some((p) => p.id === n.jornada.passo)) n.jornada = { passo: "bemvinda", trilha: [], funil: !!n.jornada?.funil };
     return n;
   }
 
@@ -66,7 +73,7 @@
   };
   const ICONE_ETAPA = { 1: I.pessoa, 2: I.pessoa, 3: I.lapis, 4: I.brilho, 5: I.lapis, 6: I.lista, 7: I.calendario, 8: I.brilho };
 
-  Object.assign(ICONE_CAT, { jornada: I.pessoa, atrair: I.calendario, conectar: I.chat, vender: I.brilho });
+  Object.assign(ICONE_CAT, { estrategia: I.lista, jornada: I.pessoa, atrair: I.calendario, conectar: I.chat, vender: I.brilho });
 
   // ------------------------------------------------------------------ utilidades
   const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -630,9 +637,12 @@
   const passoAtual = () => JORNADA.find((p) => p.id === dados.jornada.passo) || JORNADA[0];
   function irPara(id) {
     if (!JORNADA.find((p) => p.id === id)) return;
+    const faseAntes = passoAtual().fase;
     dados.jornada.trilha.push(dados.jornada.passo);
     dados.jornada.passo = id;
     if (id === "funil") dados.jornada.funil = true;
+    const faseDepois = passoAtual().fase;
+    if (faseDepois > faseAntes) setTimeout(() => toast(`Fase ${FASES[faseAntes]} concluída! 🎉 Agora: ${FASES[faseDepois]}`), 150);
     salvar(); location.hash = "#/inicio"; render(); window.scrollTo(0, 0);
   }
   function secaoMd(texto, titulo) {
@@ -645,6 +655,11 @@
     return `<section class="cartao"><ul class="checklist">${itens.map((c, i) => `<li class="${ok.includes(i) ? "ok" : ""}" data-acao="check" data-chave="${chave}" data-i="${i}"><span class="caixa">${ok.includes(i) ? I.check : ""}</span><span>${esc(c)}</span></li>`).join("")}</ul></section>`;
   }
 
+  function aulaHTML(fase) {
+    const link = (C.AULAS || {})[(window.FASES_CHAVE || [])[fase]];
+    return link ? `<div class="aula"><a class="btn btn-sec" href="${esc(link)}" target="_blank" rel="noopener">▶ Assistir à aula: ${esc(FASES[fase])}</a></div>` : "";
+  }
+
   function viewJornada() {
     const p = passoAtual(), r = dados.respostas;
     const fases = FASES.map((n, i) => `<div class="fase ${i < p.fase ? "feita" : i === p.fase ? "atual" : ""}"><span class="num ${i < p.fase ? "feito" : ""}">${i < p.fase ? I.check : i + 1}</span><span>${n}</span></div>`).join('<span class="fase-linha"></span>');
@@ -652,10 +667,15 @@
     if (p.tipo === "texto") {
       const v = r[p.campo] || "";
       corpo = `<div class="respostas"><textarea class="area" id="t-passo" data-campo="${p.campo}" placeholder="${esc(p.placeholder || "")}">${esc(v)}</textarea>
-        <div class="continuar">${p.pular ? `<button class="btn btn-leve" data-acao="pular-texto" data-chave="${p.campo}" data-proximo="${p.proximo}">${esc(p.pular)}</button>` : ""}
-        <button class="btn btn-pri" id="b-passo" data-acao="proxima-texto" data-proximo="${p.proximo}" ${p.obrig && !String(v).trim() ? "disabled" : ""}>Próxima ${I.seta}</button></div></div>`;
-    } else if (p.tipo === "pergunta") {
-      corpo = `<div class="respostas">${p.opcoes.map(([v, rot, prox]) => `<button class="btn-resp ${r[p.campo] === v ? "sel" : ""}" data-acao="responder" data-chave="${p.campo}" data-valor="${esc(v)}" data-proximo="${prox}">${esc(rot)} ${I.seta}</button>`).join("")}</div>`;
+        <div class="continuar">${p.pular ? `<button class="btn btn-leve" data-acao="pular-texto" data-chave="${p.campo}" data-proximo="${proxDe(p)}">${esc(p.pular)}</button>` : ""}
+        <button class="btn btn-pri" id="b-passo" data-acao="proxima-texto" data-proximo="${proxDe(p)}" ${p.obrig && !String(v).trim() ? "disabled" : ""}>Próxima ${I.seta}</button></div></div>`;
+    } else if (p.tipo === "multi") {
+      const marcados = String(r[p.campo] || "").split(",").filter(Boolean);
+      corpo = `<div class="respostas"><div class="chips-multi">${p.opcoes.map((o) => `<button class="chip-multi ${marcados.includes(o) ? "sel" : ""}" data-acao="multi" data-chave="${p.campo}" data-valor="${esc(o)}">${marcados.includes(o) ? I.check + " " : ""}${esc(o)}</button>`).join("")}</div>
+        <div class="continuar"><button class="btn btn-pri" data-acao="proxima-texto" data-proximo="${proxDe(p)}" ${marcados.length ? "" : "disabled"}>Próxima ${I.seta}</button></div></div>`;
+    } else if (p.tipo === "pergunta" || p.tipo === "boasvindas") {
+      const campo = p.campo || "caminho";
+      corpo = `<div class="respostas ${p.tipo === "boasvindas" ? "grandes" : ""}">${p.opcoes.map(([v, rot, prox]) => `<button class="btn-resp ${r[campo] === v ? "sel" : ""}" data-acao="responder" data-chave="${campo}" data-valor="${esc(v)}" data-proximo="${prox}">${esc(rot)} ${I.seta}</button>`).join("")}</div>`;
     } else if (p.tipo === "ia") {
       const f = FERR[p.ferramenta], s = dados.saidas[p.ferramenta];
       const falta = !s ? "" : f.escolha && !r[f.escolha] ? "Escolha uma das opções acima para continuar." : "";
@@ -665,8 +685,8 @@
         : caixaGerar(p.ferramenta);
       corpo = `${topo}${resultadoHTML(p.ferramenta)}
         ${p.checklist && s ? `<div class="passo-tit"><span class="passo">✓</span><div><b>Coloque em prática</b><small>Marque o que você já fez no seu perfil.</small></div></div>${checklistHTML(p.id, p.checklist)}` : ""}
-        ${s ? `<div class="continuar">${falta ? `<span class="motivo">${falta}</span>` : ""}<button class="btn btn-pri" data-acao="avancar" data-proximo="${p.proximo}" ${falta ? "disabled" : ""}>Continuar ${I.seta}</button></div>` : ""}
-        ${p.pulavel && !s ? `<div class="continuar"><button class="btn btn-leve" data-acao="avancar" data-proximo="${p.proximo}">Pular esta parte</button></div>` : ""}`;
+        ${s ? `<div class="continuar">${falta ? `<span class="motivo">${falta}</span>` : ""}<button class="btn btn-pri" data-acao="avancar" data-proximo="${proxDe(p)}" ${falta ? "disabled" : ""}>Continuar ${I.seta}</button></div>` : ""}
+        ${p.pulavel && !s ? `<div class="continuar"><button class="btn btn-leve" data-acao="avancar" data-proximo="${proxDe(p)}">Pular esta parte</button></div>` : ""}`;
     } else if (p.tipo === "resumo") {
       const persona = secaoMd(dados.saidas.persona?.texto, "Quem é ela") || "";
       const perfilHoje = secaoMd(dados.saidas.raio_x?.texto, "O que o seu perfil mostra");
@@ -676,18 +696,20 @@
           ${perfilHoje ? `<div class="res-item"><small>O seu perfil hoje</small>${md(perfilHoje)}</div>` : ""}
           <div class="res-item"><small>O que vem agora</small><b>Definir o seu primeiro infoproduto. Depois, ajustar o seu Instagram para ele.</b></div>
         </div>
-        <div class="continuar"><button class="btn btn-pri" data-acao="avancar" data-proximo="${p.proximo}">Vamos lá ${I.seta}</button></div>`;
+        <div class="continuar"><button class="btn btn-pri" data-acao="avancar" data-proximo="${proxDe(p)}">Vamos lá ${I.seta}</button></div>`;
     } else if (p.tipo === "pausa") {
       corpo = `<div class="linha-acoes" style="margin-bottom:16px"><a class="btn btn-sec" href="#/f/blueprint">${I.livro} Ver o plano do meu produto</a></div>
         ${checklistHTML(p.id, p.checklist)}
-        <div class="continuar"><button class="btn btn-pri" data-acao="avancar" data-proximo="${p.proximo}">${I.check} ${esc(p.botao)}</button></div>`;
+        <div class="continuar"><button class="btn btn-pri" data-acao="avancar" data-proximo="${proxDe(p)}">${I.check} ${esc(p.botao)}</button></div>`;
     } else if (p.tipo === "funil") {
       corpo = `<div class="continuar" style="justify-content:flex-start"><a class="btn btn-pri" href="#/funil">Abrir o meu funil ${I.seta}</a><a class="btn btn-sec" href="#/f/blueprint">${I.livro} Plano do produto</a></div>`;
     }
     return `
       <div class="fases">${fases}</div>
       ${p.contador ? `<div class="contador">Pergunta ${p.contador}</div>` : ""}
-      <div class="bolha"><div class="marca-sd">SD</div><div class="fala">${md(p.fala.replace("{nome}", primeiroNome()))}</div></div>
+      <div class="bolha"><div class="marca-sd">SD</div><div class="fala">${md(p.fala.replace("{nome}", primeiroNome()))}
+        ${p.termos || p.exemplo ? `<div class="ajudas">${(p.termos || []).filter((t) => GLOSSARIO[t]).map((t) => `<details class="termo"><summary>O que é ${esc(GLOSSARIO[t][0].toLowerCase())}?</summary><p>${esc(GLOSSARIO[t][1])}</p></details>`).join("")}${p.exemplo ? `<details class="termo"><summary>Ver um exemplo de resposta</summary><p>${esc(p.exemplo)}</p></details>` : ""}</div>` : ""}</div></div>
+      ${aulaHTML(p.fase)}
       ${corpo}
       ${dados.jornada.trilha.length ? `<button class="voltar" style="margin-top:22px" data-acao="voltar-passo">${I.voltar} Voltar ao passo anterior</button>` : ""}`;
   }
@@ -698,9 +720,13 @@
         <section class="cartao vazio"><p><b>O funil abre depois que você cria o seu produto.</b></p><p style="margin-top:8px">Antes de qualquer post, você precisa ter o que vender. Continue a jornada: falta pouco!</p>
         <div class="continuar" style="justify-content:center"><a class="btn btn-pri" href="#/inicio">Continuar a jornada ${I.seta}</a><button class="btn btn-leve" data-acao="espiar-funil">Ver mesmo assim</button></div></section>`;
     }
+    const hoje = new Date().getDay(), m = (window.MISSOES || [])[hoje], dias = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+    const mf = m && FERR[m.ferramenta];
     return `<div class="olho">Funil de vendas</div><h1 class="titulo">O seu <em>funil</em></h1>
-      <p class="lead" style="margin-bottom:8px">Atrair as pessoas certas, criar conexão e vender. A Sócia cria tudo no método da Vanessa, para o seu nicho e o seu produto.</p>
+      <p class="lead" style="margin-bottom:8px">Atrair as pessoas certas, criar conexão e vender, com as técnicas do método e a sua essência.</p>
       ${usandoHTML("")}
+      ${m ? `<section class="cartao missao"><div class="olho">Sua missão de hoje · ${dias[hoje]}</div><h4>Pilar: ${esc(m.pilar)}</h4><p class="desc" style="margin:6px 0 14px">${esc(m.texto)}</p>${mf ? `<a class="btn btn-pri" href="#/f/${m.ferramenta}">${I.brilho} Abrir ${esc(mf.titulo)}</a>` : ""}</section>` : ""}
+      ${aulaHTML(4)}
       ${CATS.map((c) => `<div class="secao-tit"><h3>${esc(c.titulo)}</h3><span class="desc-cat">${esc(c.desc)}</span></div>
         <div class="grade">${c.ferramentas.map(cardFerr).join("")}</div>`).join("")}`;
   }
@@ -710,12 +736,12 @@
     const msgs = dados.chat.map((m) => m.role === "user"
       ? `<div class="msg eu">${esc(m.content)}</div>`
       : `<div class="msg ela">${md(m.content)}</div>`).join("");
-    const sugest = ["Como escolher o preço do meu primeiro produto?", "Me dá 5 ganchos de Reels para o meu nicho", "Tenho vergonha de aparecer. Por onde começo?", "Como faço para vender sem ser chata?"];
+    const sugest = ["Tenho vergonha de aparecer. Por onde começo?", "Como vender sem perder a minha essência?", "Me dá 5 ganchos de Reels para o meu nicho", "Como responder quem diz que está caro?"];
     return `<div class="chat">
       <div class="chat-cab"><div><div class="olho">Sempre com você</div><h1 class="titulo" style="margin-bottom:0">Fale com a <em>Sócia</em></h1></div>
         ${dados.chat.length ? `<button class="btn btn-leve" data-acao="limpar-chat">Nova conversa</button>` : ""}</div>
       <div class="chat-lista" id="chat-lista">
-        ${msgs || `<div class="chat-vazio"><div class="marca-sd">SD</div><p>Pergunte o que quiser sobre o seu negócio. Eu já conheço o seu nicho e o seu produto.</p>
+        ${msgs || `<div class="chat-vazio"><div class="marca-sd">SD</div><p>Pergunte o que quiser sobre o seu negócio. Eu já conheço o seu produto, o seu plano e o seu manifesto.</p>
           <div class="sugestoes">${sugest.map((s) => `<button data-acao="sugestao" data-txt="${esc(s)}">${esc(s)}</button>`).join("")}</div></div>`}
         ${chatEnviando ? `<div class="msg ela"><div class="pontos" style="padding:6px 0"><i></i><i></i><i></i></div></div>` : ""}
       </div>
@@ -802,16 +828,21 @@
       case "expandir": { const t = document.getElementById("t-" + id); if (t) { t.classList.toggle("aberto"); t.style.maxHeight = t.classList.contains("aberto") ? "none" : ""; } return; }
       case "responder": {
         const k = el.dataset.chave;
-        if (dados.respostas[k] !== el.dataset.valor && ["publico", "formato"].includes(k)) limparDepois(["produtos_virais", "blueprint", "ajustes_perfil"]);
+        if (dados.respostas[k] !== el.dataset.valor && DEP_CAMPO[k]) limparDepois(DEP_CAMPO[k]);
         dados.respostas[k] = el.dataset.valor; return irPara(el.dataset.proximo);
+      }
+      case "multi": {
+        const k = el.dataset.chave, v = el.dataset.valor, l = String(dados.respostas[k] || "").split(",").filter(Boolean);
+        const pos = l.indexOf(v); pos >= 0 ? l.splice(pos, 1) : l.push(v);
+        dados.respostas[k] = l.join(","); salvar(); return render();
       }
       case "proxima-texto": {
         const p = passoAtual();
-        if (dados.respostas["_ult_" + p.campo] !== dados.respostas[p.campo]) { limparDepois(["produtos_virais", "blueprint", "ajustes_perfil"]); dados.respostas["_ult_" + p.campo] = dados.respostas[p.campo]; }
+        if (dados.respostas["_ult_" + p.campo] !== dados.respostas[p.campo]) { limparDepois(DEP_CAMPO[p.campo] || []); dados.respostas["_ult_" + p.campo] = dados.respostas[p.campo]; }
         return irPara(el.dataset.proximo);
       }
       case "pular-texto": {
-        if (dados.respostas[el.dataset.chave]) limparDepois(["produtos_virais", "blueprint", "ajustes_perfil"]);
+        if (dados.respostas[el.dataset.chave]) limparDepois(DEP_CAMPO[el.dataset.chave] || []);
         dados.respostas[el.dataset.chave] = ""; return irPara(el.dataset.proximo);
       }
       case "avancar": return irPara(el.dataset.proximo);

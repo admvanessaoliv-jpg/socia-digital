@@ -426,3 +426,16 @@ button.voltar{background:none;border:0;cursor:pointer}
 .check-linha{display:flex !important;align-items:center;gap:10px;cursor:pointer;font-weight:600}
 .check-linha input{width:20px;height:20px;accent-color:var(--neon)}
 .dados-pagina{margin-top:22px}
+
+/* ---------- essência, ajudas, missão ---------- */
+.respostas.grandes .btn-resp{min-height:64px;font-size:17px}
+.chips-multi{display:flex;flex-wrap:wrap;gap:10px}
+.chip-multi{padding:12px 18px;border-radius:999px;border:1px solid var(--linha-forte);background:var(--papel);color:var(--tinta);font-weight:600;font-size:15px;min-height:44px;cursor:pointer}
+.chip-multi.sel{border-color:var(--neon);color:var(--neon);background:var(--neon-bg)}
+.ajudas{display:grid;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid var(--linha)}
+.termo summary{cursor:pointer;color:var(--ciano);font-size:13.5px;font-weight:600}
+.termo p{margin:6px 0 4px;font-size:14px;color:var(--suave)}
+.aula{margin:-6px 0 18px 58px}
+.missao{border-color:var(--neon-borda);background:linear-gradient(135deg,#0F1513,#0B100E);margin-top:16px}
+.missao h4{margin-top:6px}
+@media (max-width:920px){.aula{margin-left:0}}
