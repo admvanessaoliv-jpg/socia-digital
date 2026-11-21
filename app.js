@@ -490,7 +490,7 @@
   // ================================================================ PÁGINA DE VENDAS
   const CORES_PAGINA = { rosa: "Rosa elegante", verde: "Verde", azul: "Azul", dourado: "Dourado", lilas: "Lilás" };
   function lerSecoes(texto) {
-    const out = {}, partes = String(texto || "").split(/^#{2,4}\s*([A-Za-zÀ-ú]+)\s*$/m);
+    const out = {}, partes = String(texto || "").split(/^\s*#{1,4}\s*\**\s*([A-Za-zÀ-ú]+)\s*\**\s*:?\s*$/m);
     for (let k = 1; k < partes.length; k += 2) {
       const nome = partes[k].normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
       out[nome] = (partes[k + 1] || "").trim();
@@ -501,7 +501,7 @@
 
   function paginaHTML(id, s) {
     const sec = lerSecoes(s.texto);
-    if (!sec.TITULO) return "";
+    if (!sec.TITULO) return `<div class="texto-ia aberto"><div class="erro-ia" style="border-radius:12px;margin-bottom:14px">A Sócia escreveu a página num formato que eu não consegui ler para publicar. Clique em <b>Gerar de novo</b> no topo.</div>${md(s.texto)}</div>`;
     const slug = dados.respostas.pagina_slug, cor = dados.respostas.cor_pagina || "rosa";
     return `<div class="texto-ia aberto">
       <div class="pag-prev"><small class="olho">Prévia do topo da página</small><h3>${esc(sec.TITULO)}</h3><p>${esc(sec.SUBTITULO || "")}</p></div>
