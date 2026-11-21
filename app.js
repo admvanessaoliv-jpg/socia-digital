@@ -5,13 +5,14 @@
   "use strict";
   const C = window.CONFIG || {};
   const CATS = window.CATEGORIAS || [];
-  const COMECO = window.COMECO || [];
+  const JORNADA = window.JORNADA || [], FASES = window.FASES || [];
   const DEMO = !C.SUPABASE_URL || !C.SUPABASE_ANON_KEY;
   const $app = document.getElementById("app");
 
   // Todas as ferramentas, por id
   const FERR = {};
   CATS.forEach((c) => c.ferramentas.forEach((f) => (FERR[f.id] = { ...f, cat: c.id, catTitulo: c.titulo })));
+  (window.FERR_JORNADA || []).forEach((f) => (FERR[f.id] = { ...f, cat: "jornada", catTitulo: "Jornada" }));
   const ICONE_CAT = {};
 
   let sb = null;
@@ -24,13 +25,15 @@
   let chatEnviando = false;
   let modoRecuperacao = false;
   let confirmarReset = false;
-  let prints = []; // imagens do Raio-X (ficam só na tela, não são salvas)
+  let prints = [];
+  let espiarFunil = false; // imagens do Raio-X (ficam só na tela, não são salvas)
 
 
-  function novosDados() { return { respostas: {}, saidas: {}, concluidas: [], checks: {}, chat: [] }; }
+  function novosDados() { return { respostas: {}, saidas: {}, checks: {}, chat: [], jornada: { passo: "tem_insta", trilha: [], funil: false } }; }
   function normalizar(d) {
     const n = novosDados();
     if (d && typeof d === "object") Object.keys(n).forEach((k) => { if (d[k] != null) n[k] = d[k]; });
+    if (!n.jornada || !n.jornada.passo) n.jornada = { passo: "tem_insta", trilha: [], funil: false };
     return n;
   }
 
@@ -57,7 +60,7 @@
   };
   const ICONE_ETAPA = { 1: I.pessoa, 2: I.pessoa, 3: I.lapis, 4: I.brilho, 5: I.lapis, 6: I.lista, 7: I.calendario, 8: I.brilho };
 
-  Object.assign(ICONE_CAT, { instagram: I.pessoa, conteudo: I.calendario, produto: I.livro, vendas: I.brilho });
+  Object.assign(ICONE_CAT, { jornada: I.pessoa, atrair: I.calendario, conectar: I.chat, vender: I.brilho });
 
   // ------------------------------------------------------------------ utilidades
   const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -170,8 +173,11 @@
     if (corpo.ferramenta === "chat") {
       return `## Que bom que você perguntou, ${primeiroNome()}!\n\nEste é o **modo demonstração**: quando o app estiver ligado ao Supabase, aqui vai aparecer a resposta real da Sócia, usando o seu nicho e o seu produto.\n\n- Ela lembra do seu nicho, da sua cliente e da sua oferta\n- Responde dúvidas sobre conteúdo, preço, Kiwify e lançamento\n- Cria textos na hora\n\nEscolha uma ferramenta no Início e teste.`;
     }
-    if (corpo.ferramenta === "nicho" || corpo.ferramenta === "ideias_produto") {
-      const n = corpo.ferramenta === "nicho" ? ["Mães que querem voltar a orar", "Mulheres ansiosas que buscam paz", "Esposas que querem organizar a casa"] : ["E-book: 21 Dias no Secreto", "Desafio: 7 Dias de Paz", "Minicurso: Rotina de Oração Real"];
+    if (corpo.ferramenta === "persona") return "## Quem é ela\nAna, 34 anos, mãe de 2, trabalha fora e chega exausta. (Exemplo do modo demonstração.)\n## O que ela sente\n- “Eu não dou conta de tudo”\n## O que ela deseja\n- Paz em casa";
+    if (corpo.ferramenta === "ajustes_perfil") return "## Nome do perfil\n- Ana Souza | Rotina para Mães\n## Bio\n- Para a mãe que vive cansada / Rotina leve com fé / 👇🏻 Comece aqui\n(Exemplo do modo demonstração.)";
+    if (corpo.ferramenta === "blueprint") return "## O produto\n⭐ 21 Noites em Paz: e-book com exercícios.\n## O método e o mecanismo único\nMétodo PAZ: Parar, Agradecer, Zerar.\n## Estrutura completa\n1. Noite 1: ...\n## Layout e diagramação\nCores #F4EDE4, #2F5D50, #D9B26F.\n## Comando para criar no Claude\n```\nVocê é uma escritora cristã... (exemplo do modo demonstração)\n```";
+    if (corpo.ferramenta === "nicho" || corpo.ferramenta === "ideias_produto" || corpo.ferramenta === "analisar_ideia") {
+      const n = corpo.ferramenta !== "ideias_produto" ? ["Mães que querem voltar a orar", "Mulheres ansiosas que buscam paz", "Esposas que querem organizar a casa"] : ["E-book: 21 Dias no Secreto", "Desafio: 7 Dias de Paz", "Minicurso: Rotina de Oração Real"];
       return `Este é um exemplo do modo demonstração.\n\n${n.map((t, i) => `### OPÇÃO ${i + 1}: ${t}\n**Para quem:** exemplo de cliente.\n**A dor que você resolve:** exemplo de dor.\n**Por que você:** exemplo.`).join("\n\n")}\n\n## Minha recomendação\nComece pela opção 1: é a que mais combina com a sua história.`;
     }
     if (corpo.ferramenta === "raio_x") {
@@ -194,6 +200,7 @@
     const extra = f.campo ? (dados.respostas["x_" + id] || "").trim() : "";
     gerando[id] = true; delete erros[id]; atualizarFerr(id);
     try {
+      if (id === "ajustes_perfil" && extra) dados.respostas.arroba = extra;
       const corpo = { ferramenta: id, extra };
       if (f.campo?.tipo === "imagens") corpo.imagens = prints.map((p) => ({ media_type: "image/jpeg", data: p.data }));
       const texto = await chamarIA(corpo);
@@ -317,15 +324,17 @@
 
   function lateral(r) {
     const item = (href, ic, txt, ativo) => `<a class="lat-item ${ativo ? "ativo" : ""}" href="#/${href}">${ic}<span>${txt}</span></a>`;
-    const grupos = CATS.map((c) => `<div class="lat-sec">${esc(c.titulo)}</div>` + c.ferramentas.map((f) => {
+    const grupos = !dados.jornada.funil ? "" : `<div class="lat-sec">Ferramentas do funil</div>` + CATS.map((c) => c.ferramentas.map((f) => {
       const ativo = r.nome === "f" && r.arg === f.id, feito = !!dados.saidas[f.id];
       return `<a class="lat-item pq ${ativo ? "ativo" : ""}" href="#/f/${f.id}"><span class="ponto ${feito ? "feito" : ""}"></span><span>${esc(f.titulo)}</span></a>`;
     }).join("")).join("");
+    const fase = FASES[passoAtual().fase] || "";
     return `
     <aside class="lateral">
       <div class="lat-topo"><div class="marca-sd">SD</div><div><b>Sócia Digital</b><small>${esc(C.NOME_CURSO)}</small><div class="status-ia"><i></i> IA online</div></div></div>
       <nav class="lat-nav">
-        ${item("inicio", I.casa, "Início", r.nome === "inicio")}
+        ${item("inicio", I.casa, `Minha jornada <small class="lat-fase">${fase}</small>`, r.nome === "inicio")}
+        ${item("funil", I.lista, `Funil de vendas${dados.jornada.funil ? "" : " 🔒"}`, r.nome === "funil")}
         ${item("socia", I.chat, "Fale com a Sócia", r.nome === "socia")}
         ${item("materiais", I.pasta, "Meus materiais", r.nome === "materiais")}
         ${grupos}
@@ -346,7 +355,8 @@
     else if (r.nome === "socia") corpo = viewChat();
     else if (r.nome === "materiais") corpo = viewMateriais();
     else if (r.nome === "conta") corpo = viewConta();
-    else corpo = viewInicio();
+    else if (r.nome === "funil") corpo = viewFunil();
+    else corpo = viewJornada();
     $app.innerHTML = `
     <div class="casca" id="casca">
       ${lateral(r)}
@@ -367,28 +377,6 @@
     f = FERR[f.id] || f;
     const feito = !!dados.saidas[f.id];
     return `<a class="atalho ${feito ? "feito" : ""}" href="#/f/${f.id}"><span class="ic">${ICONE_CAT[f.cat] || I.brilho}</span><b>${esc(f.titulo)}</b><span>${esc(f.desc)}</span>${feito ? `<span class="selo-ok">${I.check} criado</span>` : ""}</a>`;
-  }
-
-  function viewInicio() {
-    const r = dados.respostas;
-    const comeco = COMECO.filter((id) => FERR[id]).map((id, i) => `<a class="chip ${dados.saidas[id] ? "feito" : ""}" href="#/f/${id}"><span class="num ${dados.saidas[id] ? "feito" : ""}">${dados.saidas[id] ? I.check : i + 1}</span>${esc(FERR[id].titulo)}</a>`).join("");
-    return `
-      <div class="olho">${esc(C.NOME_CURSO)}</div>
-      <h1 class="titulo">Olá, <em>${esc(primeiroNome())}</em>.</h1>
-      <p class="lead" style="margin-bottom:26px">Escolha uma ferramenta. A Sócia cria no método da Vanessa, pronto para você copiar e usar.</p>
-      <section class="cartao negocio">
-        <div class="cartao-cab"><span class="ic">${I.pessoa}</span><div><h4>Meu negócio</h4><p class="desc">Preencha uma vez: todas as ferramentas usam. Salva sozinho enquanto você digita. <span class="salvo" id="salvo"></span></p></div></div>
-        <div class="tres">
-          <div class="campo"><label for="c-nicho">Meu nicho</label><input class="input" id="c-nicho" data-campo="nicho" placeholder="Ex.: mães cristãs que querem sair das dívidas" value="${esc(r.nicho || "")}"><a class="mini-link" href="#/f/nicho">Não sabe? Descobrir meu nicho ${I.seta}</a></div>
-          <div class="campo"><label for="c-arroba">Meu @</label><input class="input" id="c-arroba" data-campo="arroba" placeholder="@seuperfil" value="${esc(r.arroba || "")}"></div>
-          <div class="campo"><label for="c-produto">Meu produto</label><input class="input" id="c-produto" data-campo="produto" placeholder="Ex.: E-book 21 Dias Sem Dívidas" value="${esc(r.produto || "")}"><a class="mini-link" href="#/f/ideias_produto">Ainda não tem? Ideias de produto ${I.seta}</a></div>
-        </div>
-        <div class="linha-acoes" style="margin-top:4px"><button class="btn btn-pri" data-acao="salvar-negocio">${I.check} Salvar</button></div>
-      </section>
-      <div class="secao-tit"><h3>Por onde começar</h3><span class="olho" style="color:var(--suave)">sugestão</span></div>
-      <div class="chips">${comeco}</div>
-      ${CATS.map((c) => `<div class="secao-tit"><h3>${esc(c.titulo)}</h3><span class="desc-cat">${esc(c.desc)}</span></div>
-        <div class="grade">${c.ferramentas.map(cardFerr).join("")}</div>`).join("")}`;
   }
 
   // Lê as "### OPÇÃO N: nome" da resposta da IA
@@ -414,8 +402,9 @@
     return "";
   }
   function atualizarBotoes() {
-    const r = rota(); if (r.nome !== "f" || !FERR[r.arg] || gerando[r.arg]) return;
-    const b = document.getElementById("b-" + r.arg), m = document.getElementById("m-" + r.arg), motivo = bloqueio(r.arg);
+    const r = rota(), id = r.nome === "f" ? r.arg : (r.nome === "inicio" ? passoAtual().ferramenta : null);
+    if (!id || !FERR[id] || gerando[id]) return;
+    const b = document.getElementById("b-" + id), m = document.getElementById("m-" + id), motivo = bloqueio(id);
     if (b) b.disabled = !!motivo;
     if (m) m.textContent = motivo;
   }
@@ -546,46 +535,117 @@
       <div><b class="f-tit">Evite</b><ul class="f-lista evitar">${EVITAR.map((t) => `<li>${t}</li>`).join("")}</ul></div></div></section>`;
   }
 
-  function atualizarFerr(id) {
-    const r = rota();
-    if (r.nome === "f" && r.arg === id) render();
-  }
+  function atualizarFerr() { render(); }
 
   function usandoHTML(id) {
     const r = dados.respostas;
-    if (id === "nicho") return "";
+    if (id === "nicho" || FERR[id]?.cat === "jornada") return "";
     if (!String(r.nicho || "").trim()) return `<div class="usa aviso">Você ainda não definiu o seu nicho. <a href="#/inicio">Preencha em Meu negócio</a> ou use <a href="#/f/nicho">Descobrir meu nicho</a>: assim o texto sai sob medida.</div>`;
     return `<div class="usa">Usando: <b>${esc(r.nicho)}</b>${r.produto ? ` · produto <b>${esc(r.produto)}</b>` : ""}${r.mecanismo ? ` · mecanismo <b>${esc(r.mecanismo)}</b>` : ""} · <a href="#/inicio">alterar</a></div>`;
   }
 
-  function viewFerramenta(id) {
-    const f = FERR[id];
-    if (!f) { location.hash = "#/inicio"; return ""; }
-    const s = dados.saidas[id], g = gerando[id], motivo = g ? "" : bloqueio(id), c = f.campo;
+  function caixaGerar(id) {
+    const f = FERR[id], s = dados.saidas[id], g = gerando[id], motivo = g ? "" : bloqueio(id), c = f.campo;
     const v = dados.respostas["x_" + id] || "";
     const campo = c?.tipo === "imagens" ? `<div class="campo"><label>${esc(c.rotulo)} <span class="obrig">*</span></label>${c.dica ? `<div class="dica">${esc(c.dica)}</div>` : ""}
         <div class="prints">${prints.map((p, i) => `<figure><img src="data:image/jpeg;base64,${p.data}" alt="Print ${i + 1}"><button class="btn-leve" data-acao="tirar-print" data-i="${i}" aria-label="Tirar print ${i + 1}">✕</button></figure>`).join("")}
           ${prints.length < 5 ? `<label class="add-print"><input type="file" accept="image/*" multiple data-prints hidden>${I.baixar}<span>Adicionar prints</span></label>` : ""}</div>
         <small class="dica-cel">Os prints não ficam salvos: são usados só nesta análise.</small></div>`
       : c ? `<div class="campo"><label for="x-${id}">${esc(c.rotulo)}${c.obrig ? ' <span class="obrig">*</span>' : ""}</label>${c.tipo === "area"
-      ? `<textarea class="area" id="x-${id}" data-campo="x_${id}" placeholder="${esc(c.placeholder || "")}">${esc(v)}</textarea>`
-      : `<input class="input" id="x-${id}" data-campo="x_${id}" placeholder="${esc(c.placeholder || "")}" value="${esc(v)}">`}</div>` : "";
-    const outras = (CATS.find((x) => x.id === f.cat)?.ferramentas || []).filter((x) => x.id !== id).slice(0, 3);
-    return `
-      <a class="voltar" href="#/inicio">${I.voltar} Todas as ferramentas</a>
-      <div class="olho">${esc(f.catTitulo)}</div><h1 class="titulo">${esc(f.titulo)}</h1><p class="lead">${esc(f.desc)}</p>
-      ${f.formulas ? `<details class="det-formulas"><summary>Ver as fórmulas de capa da Vanessa</summary>${formulasHTML()}</details>` : ""}
-      <section class="cartao caixa-gerar">
+        ? `<textarea class="area" id="x-${id}" data-campo="x_${id}" placeholder="${esc(c.placeholder || "")}">${esc(v)}</textarea>`
+        : `<input class="input" id="x-${id}" data-campo="x_${id}" placeholder="${esc(c.placeholder || "")}" value="${esc(v)}">`}</div>` : "";
+    return `<section class="cartao caixa-gerar">
         ${campo}
-        ${usandoHTML(id)}
+        ${f.cat === "jornada" ? "" : usandoHTML(id)}
         <div class="linha-acoes" style="margin-top:${campo ? 4 : 0}px;align-items:center">
-          ${g ? `<button class="btn btn-pri" disabled>Criando...</button>` : `<button class="btn btn-pri" id="b-${id}" data-acao="gerar" data-id="${id}" ${motivo ? "disabled" : ""}>${I.brilho} ${s ? "Gerar de novo" : "Gerar com a Sócia"}</button>`}
+          ${g ? `<button class="btn btn-pri" disabled>Criando...</button>` : `<button class="btn ${s ? "btn-sec" : "btn-pri"}" id="b-${id}" data-acao="gerar" data-id="${id}" ${motivo ? "disabled" : ""}>${I.brilho} ${s ? "Gerar de novo" : "Gerar com a Sócia"}</button>`}
           <span class="motivo" id="m-${id}">${esc(motivo)}</span>
         </div>
       </section>
-      ${erros[id] ? `<div class="erro-ia" style="border-radius:12px;margin-bottom:16px">${esc(erros[id])}</div>` : ""}
+      ${erros[id] ? `<div class="erro-ia" style="border-radius:12px;margin-bottom:16px">${esc(erros[id])}</div>` : ""}`;
+  }
+
+  function viewFerramenta(id) {
+    const f = FERR[id];
+    if (!f) { location.hash = "#/inicio"; return ""; }
+    const daJornada = f.cat === "jornada";
+    const outras = daJornada ? [] : (CATS.find((x) => x.id === f.cat)?.ferramentas || []).filter((x) => x.id !== id).slice(0, 3);
+    return `
+      <a class="voltar" href="${daJornada ? "#/inicio" : "#/funil"}">${I.voltar} ${daJornada ? "Voltar para a jornada" : "Todas as ferramentas do funil"}</a>
+      <div class="olho">${esc(f.catTitulo)}</div><h1 class="titulo">${esc(f.titulo)}</h1><p class="lead">${esc(f.desc)}</p>
+      ${f.formulas ? `<details class="det-formulas"><summary>Ver as fórmulas de capa da Vanessa</summary>${formulasHTML()}</details>` : ""}
+      ${caixaGerar(id)}
       ${resultadoHTML(id)}
       ${outras.length ? `<div class="secao-tit"><h3>Continue com</h3></div><div class="grade">${outras.map(cardFerr).join("")}</div>` : ""}`;
+  }
+
+  // ================================================================ JORNADA
+  const passoAtual = () => JORNADA.find((p) => p.id === dados.jornada.passo) || JORNADA[0];
+  function irPara(id) {
+    if (!JORNADA.find((p) => p.id === id)) return;
+    dados.jornada.trilha.push(dados.jornada.passo);
+    dados.jornada.passo = id;
+    if (id === "funil") dados.jornada.funil = true;
+    salvar(); location.hash = "#/inicio"; render(); window.scrollTo(0, 0);
+  }
+  function secaoMd(texto, titulo) {
+    const t = String(texto || ""), re = new RegExp("^##\\s*" + titulo + "[^\\n]*\\n([\\s\\S]*?)(?=^##\\s|$(?![\\s\\S]))", "mi");
+    const m = t.match(re);
+    return m ? m[1].trim() : "";
+  }
+  function checklistHTML(chave, itens) {
+    const ok = dados.checks[chave] || [];
+    return `<section class="cartao"><ul class="checklist">${itens.map((c, i) => `<li class="${ok.includes(i) ? "ok" : ""}" data-acao="check" data-chave="${chave}" data-i="${i}"><span class="caixa">${ok.includes(i) ? I.check : ""}</span><span>${esc(c)}</span></li>`).join("")}</ul></section>`;
+  }
+
+  function viewJornada() {
+    const p = passoAtual(), r = dados.respostas;
+    const fases = FASES.map((n, i) => `<div class="fase ${i < p.fase ? "feita" : i === p.fase ? "atual" : ""}"><span class="num ${i < p.fase ? "feito" : ""}">${i < p.fase ? I.check : i + 1}</span><span>${n}</span></div>`).join('<span class="fase-linha"></span>');
+    let corpo = "";
+    if (p.tipo === "pergunta") {
+      corpo = `<div class="respostas">${p.opcoes.map(([v, rot, prox]) => `<button class="btn-resp ${r[p.campo] === v ? "sel" : ""}" data-acao="responder" data-chave="${p.campo}" data-valor="${esc(v)}" data-proximo="${prox}">${esc(rot)} ${I.seta}</button>`).join("")}</div>`;
+    } else if (p.tipo === "ia") {
+      const f = FERR[p.ferramenta], s = dados.saidas[p.ferramenta];
+      const falta = !s ? "" : f.escolha && !r[f.escolha] ? "Escolha uma das opções acima para continuar." : "";
+      corpo = `${caixaGerar(p.ferramenta)}${resultadoHTML(p.ferramenta)}
+        ${p.checklist && s ? `<div class="passo-tit"><span class="passo">✓</span><div><b>Coloque em prática</b><small>Marque o que você já fez no seu perfil.</small></div></div>${checklistHTML(p.id, p.checklist)}` : ""}
+        ${s ? `<div class="continuar">${falta ? `<span class="motivo">${falta}</span>` : ""}<button class="btn btn-pri" data-acao="avancar" data-proximo="${p.proximo}" ${falta ? "disabled" : ""}>Continuar ${I.seta}</button></div>` : ""}
+        ${p.id === "raio_x" && !s ? `<div class="continuar"><button class="btn btn-leve" data-acao="avancar" data-proximo="${p.proximo}">Pular esta parte</button></div>` : ""}`;
+    } else if (p.tipo === "resumo") {
+      const persona = secaoMd(dados.saidas.persona?.texto, "Quem é ela") || "";
+      const perfilHoje = secaoMd(dados.saidas.raio_x?.texto, "O que o seu perfil mostra");
+      corpo = `<div class="resumo">
+          <div class="res-item"><small>Seu nicho</small><b>${esc(r.nicho || "Ainda não definido")}</b>${r.nicho_detalhe ? md(r.nicho_detalhe) : ""}</div>
+          ${persona ? `<div class="res-item"><small>Sua cliente ideal</small>${md(persona)}<a class="mini-link" href="#/f/persona">Ver o retrato completo ${I.seta}</a></div>` : ""}
+          ${perfilHoje ? `<div class="res-item"><small>O seu perfil hoje</small>${md(perfilHoje)}</div>` : ""}
+          <div class="res-item"><small>O que vem agora</small><b>Ajustar o seu Instagram e criar o seu primeiro infoproduto.</b></div>
+        </div>
+        <div class="continuar"><button class="btn btn-pri" data-acao="avancar" data-proximo="${p.proximo}">Vamos lá ${I.seta}</button></div>`;
+    } else if (p.tipo === "pausa") {
+      corpo = `<div class="linha-acoes" style="margin-bottom:16px"><a class="btn btn-sec" href="#/f/blueprint">${I.livro} Ver o plano do meu produto</a></div>
+        ${checklistHTML(p.id, p.checklist)}
+        <div class="continuar"><button class="btn btn-pri" data-acao="avancar" data-proximo="${p.proximo}">${I.check} ${esc(p.botao)}</button></div>`;
+    } else if (p.tipo === "funil") {
+      corpo = `<div class="continuar" style="justify-content:flex-start"><a class="btn btn-pri" href="#/funil">Abrir o meu funil ${I.seta}</a><a class="btn btn-sec" href="#/f/blueprint">${I.livro} Plano do produto</a></div>`;
+    }
+    return `
+      <div class="fases">${fases}</div>
+      <div class="bolha"><div class="marca-sd">SD</div><div class="fala">${md(p.fala.replace("{nome}", primeiroNome()))}</div></div>
+      ${corpo}
+      ${dados.jornada.trilha.length ? `<button class="voltar" style="margin-top:22px" data-acao="voltar-passo">${I.voltar} Voltar ao passo anterior</button>` : ""}`;
+  }
+
+  function viewFunil() {
+    if (!dados.jornada.funil && !espiarFunil) {
+      return `<div class="olho">Funil de vendas</div><h1 class="titulo">O seu <em>funil</em></h1>
+        <section class="cartao vazio"><p><b>O funil abre depois que você cria o seu produto.</b></p><p style="margin-top:8px">Antes de qualquer post, você precisa ter o que vender. Continue a jornada: falta pouco!</p>
+        <div class="continuar" style="justify-content:center"><a class="btn btn-pri" href="#/inicio">Continuar a jornada ${I.seta}</a><button class="btn btn-leve" data-acao="espiar-funil">Ver mesmo assim</button></div></section>`;
+    }
+    return `<div class="olho">Funil de vendas</div><h1 class="titulo">O seu <em>funil</em></h1>
+      <p class="lead" style="margin-bottom:8px">Atrair as pessoas certas, criar conexão e vender. A Sócia cria tudo no método da Vanessa, para o seu nicho e o seu produto.</p>
+      ${usandoHTML("")}
+      ${CATS.map((c) => `<div class="secao-tit"><h3>${esc(c.titulo)}</h3><span class="desc-cat">${esc(c.desc)}</span></div>
+        <div class="grade">${c.ferramentas.map(cardFerr).join("")}</div>`).join("")}`;
   }
 
   // ------------------------------------------------------------------ Chat
@@ -629,10 +689,17 @@
     return `<div class="olho">Minha conta</div><h1 class="titulo">Olá, <em>${esc(primeiroNome())}</em></h1><p class="lead" style="margin-bottom:28px">${esc(perfil.email)}</p>
       <section class="cartao"><h4>Como você quer ser chamada?</h4><p class="desc" style="margin-bottom:16px">A Sócia usa este nome nas conversas.</p>
         <div style="display:flex;gap:10px;flex-wrap:wrap"><input class="input" id="nome-conta" value="${esc(perfil.nome)}" style="flex:1;min-width:200px"><button class="btn btn-pri" data-acao="salvar-nome">Salvar</button></div></section>
+      <section class="cartao negocio"><h4>Meu negócio</h4><p class="desc" style="margin-bottom:14px">A Sócia preenche isto durante a jornada, mas você pode ajustar. Salva sozinho enquanto você digita. <span class="salvo" id="salvo"></span></p>
+        <div class="tres">
+          <div class="campo"><label for="c-nicho">Meu nicho</label><input class="input" id="c-nicho" data-campo="nicho" value="${esc(dados.respostas.nicho || "")}"></div>
+          <div class="campo"><label for="c-arroba">Meu @</label><input class="input" id="c-arroba" data-campo="arroba" placeholder="@seuperfil" value="${esc(dados.respostas.arroba || "")}"></div>
+          <div class="campo"><label for="c-produto">Meu produto</label><input class="input" id="c-produto" data-campo="produto" value="${esc(dados.respostas.produto || "")}"></div>
+        </div>
+        <button class="btn btn-pri" data-acao="salvar-negocio">${I.check} Salvar</button></section>
       <section class="cartao"><h4>Criações de hoje</h4><p class="desc">Você pode gerar até ${uso.limite} materiais ou respostas por dia. Amanhã renova.</p>
         <div class="uso"><i style="width:${p}%"></i></div><small style="color:var(--suave)">${uso.hoje} de ${uso.limite} usadas hoje</small></section>
       ${DEMO ? "" : `<section class="cartao"><h4>Trocar senha</h4><div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px"><input class="input" id="nova-senha" type="password" placeholder="Nova senha (mínimo 6)" style="flex:1;min-width:200px"><button class="btn btn-sec" data-acao="trocar-senha">Trocar</button></div></section>`}
-      <section class="cartao"><h4>Recomeçar do zero</h4><p class="desc" style="margin-bottom:14px">Apaga o seu negócio e todos os materiais.</p>
+      <section class="cartao"><h4>Recomeçar do zero</h4><p class="desc" style="margin-bottom:14px">Apaga a sua jornada, o seu negócio e todos os materiais.</p>
         <button class="btn btn-sec" data-acao="recomecar">${confirmarReset ? "Clique de novo para apagar tudo" : "Recomeçar do zero"}</button></section>
       <div style="display:flex;gap:10px;flex-wrap:wrap">${C.SUPORTE_URL ? `<a class="btn btn-sec" href="${esc(C.SUPORTE_URL)}" target="_blank" rel="noopener">Falar com o suporte</a>` : ""}<button class="btn btn-leve" data-acao="sair">${I.sair} Sair</button></div>`;
   }
@@ -676,6 +743,15 @@
       case "copiar": return copiar(dados.saidas[id]?.texto || "");
       case "baixar": return baixar(slug(FERR[id].titulo), dados.saidas[id]?.texto || "");
       case "expandir": { const t = document.getElementById("t-" + id); if (t) { t.classList.toggle("aberto"); t.style.maxHeight = t.classList.contains("aberto") ? "none" : ""; } return; }
+      case "responder": dados.respostas[el.dataset.chave] = el.dataset.valor; return irPara(el.dataset.proximo);
+      case "avancar": return irPara(el.dataset.proximo);
+      case "voltar-passo": { const ant = dados.jornada.trilha.pop(); if (ant) { dados.jornada.passo = ant; salvar(); render(); window.scrollTo(0, 0); } return; }
+      case "espiar-funil": espiarFunil = true; return render();
+      case "check": {
+        const k = el.dataset.chave, i = Number(el.dataset.i), l = dados.checks[k] || (dados.checks[k] = []);
+        const pos = l.indexOf(i); pos >= 0 ? l.splice(pos, 1) : l.push(i);
+        salvar(); return render();
+      }
       case "tirar-print": prints.splice(Number(el.dataset.i), 1); return render();
       case "salvar-negocio": {
         ["nicho", "arroba", "produto"].forEach((k) => { const c = document.getElementById("c-" + k); if (c) dados.respostas[k] = c.value.trim(); });
