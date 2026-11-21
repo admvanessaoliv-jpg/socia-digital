@@ -43,12 +43,12 @@ window.ETAPAS = [
   },
   {
     id: 3, titulo: "Conteúdo para atrair", subtitulo: "Carrosséis no método da Vanessa",
-    intro: "O que mais vende no Instagram são carrosséis: capa que para a rolagem, direção clara em cada slide e, no último slide, o convite. A Sócia escreve no método e o app desenha as imagens prontas para você postar.",
+    intro: "O que mais vende no Instagram são carrosséis: capa que para a rolagem, direção clara em cada slide e, no último slide, o convite. A Sócia escreve o texto de cada slide no método, e você monta no Canva com a sua identidade visual.",
     principal: "carrossel_viral",
     formulas: true,
     campos: [],
     ferramentas: [
-      { id: "carrossel_viral", titulo: "Carrossel Pronto", descricao: "A Sócia escreve e o app desenha os 7 slides (1080x1350) para baixar e postar, com legenda.", carrossel: true, extra: { rotulo: "Tema (opcional)", placeholder: "Deixe em branco e a Sócia escolhe. Ex.: Durante 7 noites, ore pela sua casa", opcional: true } },
+      { id: "carrossel_viral", titulo: "Carrossel Pronto", descricao: "O texto dos 7 slides e a legenda, prontos para montar no Canva.", carrossel: true, extra: { rotulo: "Tema (opcional)", placeholder: "Deixe em branco e a Sócia escolhe. Ex.: Durante 7 noites, ore pela sua casa", opcional: true } },
       { id: "capas_10", titulo: "10 Ideias de Capa", descricao: "Capas no método para você escolher o tema dos próximos carrosséis." },
     ],
     checklist: [

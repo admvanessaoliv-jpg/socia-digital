@@ -193,7 +193,9 @@
     } catch (e) {
       erros[id] = e.message;
     }
-    gerando[id] = false; atualizarFerr(id);
+    gerando[id] = false;
+    const r = rota();
+    if (r.nome === "etapa" && Number(r.arg) === f.etapa) render(); else atualizarFerr(id);
   }
 
   async function enviarChat() {
@@ -347,7 +349,6 @@
         <div class="conteudo">${corpo}</div>
       </main>
     </div>`;
-    desenharCarrosseis();
     if (r.nome === "socia") {
       const l = document.getElementById("chat-lista"); if (l) l.scrollTop = l.scrollHeight;
       const t = document.getElementById("chat-texto"); if (t && !chatEnviando && window.innerWidth > 920) t.focus();
@@ -475,14 +476,6 @@
 
 
   // ================================================================ CARROSSEL
-  const TEMAS = {
-    escuro: { nome: "Escuro elegante", bg: "#121212", bg2: "#1C1C1C", tx: "#F6F1E9", sub: "#CFC6B8", ac: "#D9B26F" },
-    claro: { nome: "Claro delicado", bg: "#FBF7F2", bg2: "#F1E7DC", tx: "#2A2225", sub: "#6E6266", ac: "#B0646F" },
-    verde: { nome: "Verde sofisticado", bg: "#1F3D36", bg2: "#28504A", tx: "#FFFFFF", sub: "#D7E6DF", ac: "#F2D06B" },
-    lilas: { nome: "Lilás suave", bg: "#EFE9F7", bg2: "#E2D8F0", tx: "#2C2340", sub: "#5E5470", ac: "#7B5EA7" },
-  };
-  const carrEditando = new Set();
-
   function lerSlides(texto) {
     const t = String(texto || "");
     const partes = t.split(/^#{2,4}\s*SLIDE\s*(\d+)[^\n]*$/mi);
@@ -499,117 +492,19 @@
     return { slides, legenda: lm ? lm[1].trim() : "" };
   }
 
+  const textoSlides = (s) => s.slides.map((sl, i) => `SLIDE ${i + 1}\n${sl.titulo}${sl.texto ? "\n" + sl.texto : ""}`).join("\n\n") + (s.legenda ? `\n\nLEGENDA\n${s.legenda}` : "");
+
   function carrosselHTML(id, s) {
     if (!s.slides) Object.assign(s, lerSlides(s.texto));
     if (!s.slides || s.slides.length < 2) return "";
-    const tema = dados.respostas.tema_carrossel || "escuro";
-    const ed = carrEditando.has(id);
-    return `<div class="texto-ia aberto" data-carrossel="${id}">
-      <div class="carr-barra">
-        <select class="select" data-campo="tema_carrossel" aria-label="Visual do carrossel">${Object.entries(TEMAS).map(([k, t]) => `<option value="${k}" ${k === tema ? "selected" : ""}>${t.nome}</option>`).join("")}</select>
-        <button class="btn btn-pri" data-acao="carr-baixar" data-id="${id}">${I.baixar} Baixar os ${s.slides.length} slides</button>
-        <button class="btn btn-sec" data-acao="carr-editar" data-id="${id}">${I.lapis} ${ed ? "Fechar edição" : "Editar textos"}</button>
-      </div>
-      <div class="carr-grade">${s.slides.map((_, i) => `<figure><img id="ci-${id}-${i}" alt="Slide ${i + 1}"><figcaption><button class="btn-leve" data-acao="carr-um" data-id="${id}" data-i="${i}">${I.baixar} Slide ${i + 1}</button></figcaption></figure>`).join("")}</div>
-      <p class="dica-cel">No celular: toque e segure na imagem e escolha “Salvar imagem”.</p>
-      ${ed ? `<div class="carr-edicao">${s.slides.map((sl, i) => `<div class="carr-ed"><span class="passo">${i + 1}</span><div><input class="input" data-slide="${id}|${i}|titulo" value="${esc(sl.titulo)}" aria-label="Título do slide ${i + 1}"><textarea class="area" data-slide="${id}|${i}|texto" aria-label="Texto do slide ${i + 1}">${esc(sl.texto)}</textarea></div></div>`).join("")}</div>` : ""}
-      <div class="legenda"><div class="legenda-cab"><b>Legenda</b><button class="btn-leve" data-acao="carr-legenda" data-id="${id}">${I.copiar} Copiar legenda</button></div><p>${esc(s.legenda).replace(/\n/g, "<br>")}</p></div>
+    const n = s.slides.length;
+    return `<div class="texto-ia aberto">
+      <div class="carr-barra"><button class="btn btn-pri" data-acao="carr-copiar" data-id="${id}">${I.copiar} Copiar o carrossel inteiro</button><span class="dica-cel" style="margin:0">Cole no Canva e monte com a sua identidade visual.</span></div>
+      <div class="slides-txt">${s.slides.map((sl, i) => `<div class="slide-txt ${i === 0 ? "capa" : i === n - 1 ? "pitch" : ""}">
+        <div class="slide-cab"><span class="passo">${i + 1}</span><small>${i === 0 ? "Capa" : i === n - 1 ? "Último slide" : "Slide"}</small><button class="btn-leve" data-acao="slide-copiar" data-id="${id}" data-i="${i}">${I.copiar}</button></div>
+        <b>${esc(sl.titulo)}</b>${sl.texto ? `<p>${esc(sl.texto)}</p>` : ""}</div>`).join("")}</div>
+      ${s.legenda ? `<div class="legenda"><div class="legenda-cab"><b>Legenda</b><button class="btn-leve" data-acao="carr-legenda" data-id="${id}">${I.copiar} Copiar legenda</button></div><p>${esc(s.legenda).replace(/\n/g, "<br>")}</p></div>` : ""}
     </div>`;
-  }
-
-  function quebrar(ctx, txt, max) {
-    const palavras = String(txt || "").split(/\s+/).filter(Boolean), linhas = [];
-    let linha = "";
-    for (const p of palavras) {
-      const teste = linha ? linha + " " + p : p;
-      if (ctx.measureText(teste).width > max && linha) { linhas.push(linha); linha = p; } else linha = teste;
-    }
-    if (linha) linhas.push(linha);
-    return linhas;
-  }
-  function caber(ctx, txt, max, tam, minimo, maxLinhas, peso, fam) {
-    for (let t = tam; t >= minimo; t -= 4) {
-      ctx.font = `${peso} ${t}px ${fam}`;
-      const l = quebrar(ctx, txt, max);
-      if (l.length <= maxLinhas) return { l, t };
-    }
-    ctx.font = `${peso} ${minimo}px ${fam}`;
-    return { l: quebrar(ctx, txt, max), t: minimo };
-  }
-  function retang(x, a, b, w, h, r) {
-    x.beginPath(); x.moveTo(a + r, b); x.arcTo(a + w, b, a + w, b + h, r); x.arcTo(a + w, b + h, a, b + h, r);
-    x.arcTo(a, b + h, a, b, r); x.arcTo(a, b, a + w, b, r); x.closePath();
-  }
-
-  function desenharSlide(sl, i, total, chaveTema) {
-    const W = 1080, H = 1350, M = 96, T = TEMAS[chaveTema] || TEMAS.escuro;
-    const fam = '"Manrope", "Segoe UI", Arial, sans-serif', famT = '"Space Grotesk", "Manrope", Arial, sans-serif';
-    const c = document.createElement("canvas"); c.width = W; c.height = H;
-    const x = c.getContext("2d");
-    x.fillStyle = T.bg; x.fillRect(0, 0, W, H);
-    x.fillStyle = T.bg2; x.beginPath(); x.arc(W - 40, 110, 250, 0, Math.PI * 2); x.fill();
-    x.textBaseline = "top";
-    const arroba = String(dados.respostas.arroba || "").trim();
-    const capa = i === 0, ultimo = i === total - 1;
-    if (capa) {
-      const r = caber(x, sl.titulo, W - 2 * M, 104, 60, 6, "700", famT);
-      const alt = r.l.length * r.t * 1.12;
-      let y = Math.max(M + 60, (H - alt) / 2 - 80);
-      x.fillStyle = T.tx; r.l.forEach((ln, k) => x.fillText(ln, M, y + k * r.t * 1.12));
-      y += alt + 34; x.fillStyle = T.ac; x.fillRect(M, y, 120, 8); y += 42;
-      if (sl.texto) { const s2 = caber(x, sl.texto, W - 2 * M, 46, 32, 3, "500", fam); x.fillStyle = T.sub; s2.l.forEach((ln, k) => x.fillText(ln, M, y + k * s2.t * 1.3)); }
-      x.font = `700 34px ${fam}`; x.fillStyle = T.ac; x.textAlign = "right"; x.fillText("Arraste →", W - M, H - M - 34); x.textAlign = "left";
-    } else if (ultimo) {
-      x.font = `700 40px ${famT}`; x.fillStyle = T.ac; x.fillText(String(i + 1).padStart(2, "0"), M, M);
-      const bx = M - 24, by = M + 110, bw = W - 2 * M + 48, bh = H - by - M - 80;
-      x.fillStyle = T.ac; retang(x, bx, by, bw, bh, 40); x.fill();
-      const r = caber(x, sl.titulo, bw - 120, 80, 48, 5, "700", famT);
-      const s2 = sl.texto ? caber(x, sl.texto, bw - 120, 44, 30, 6, "600", fam) : { l: [], t: 0 };
-      const alt = r.l.length * r.t * 1.12 + (s2.l.length ? 48 + s2.l.length * s2.t * 1.35 : 0);
-      let y = by + (bh - alt) / 2;
-      x.font = `700 ${r.t}px ${famT}`; x.fillStyle = T.bg; r.l.forEach((ln, k) => x.fillText(ln, bx + 60, y + k * r.t * 1.12));
-      y += r.l.length * r.t * 1.12 + 48;
-      if (s2.l.length) { x.font = `600 ${s2.t}px ${fam}`; s2.l.forEach((ln, k) => x.fillText(ln, bx + 60, y + k * s2.t * 1.35)); }
-    } else {
-      x.font = `700 40px ${famT}`; x.fillStyle = T.ac; x.fillText(String(i + 1).padStart(2, "0"), M, M);
-      const r = caber(x, sl.titulo, W - 2 * M, 84, 52, 4, "700", famT);
-      const s2 = sl.texto ? caber(x, sl.texto, W - 2 * M, 54, 34, 9, "500", fam) : { l: [], t: 0 };
-      const alt = r.l.length * r.t * 1.14 + 95 + s2.l.length * s2.t * 1.4;
-      let y = Math.max(M + 110, (H - alt) / 2 - 30);
-      x.font = `700 ${r.t}px ${famT}`; x.fillStyle = T.tx; r.l.forEach((ln, k) => x.fillText(ln, M, y + k * r.t * 1.14));
-      y += r.l.length * r.t * 1.14 + 36; x.fillStyle = T.ac; x.fillRect(M, y, 90, 7); y += 59;
-      if (s2.l.length) { x.font = `500 ${s2.t}px ${fam}`; x.fillStyle = T.sub; s2.l.forEach((ln, k) => x.fillText(ln, M, y + k * s2.t * 1.4)); }
-    }
-    if (arroba) { x.font = `600 30px ${fam}`; x.fillStyle = ultimo ? T.sub : T.sub; x.fillText(arroba.startsWith("@") ? arroba : "@" + arroba, M, H - M - 30); }
-    x.font = `600 28px ${fam}`; x.fillStyle = T.sub; x.textAlign = "right";
-    if (!capa) x.fillText(`${i + 1}/${total}`, W - M, H - M - 28);
-    x.textAlign = "left";
-    return c.toDataURL("image/png");
-  }
-
-  let fontesProntas = null;
-  function carregarFontes() {
-    if (!fontesProntas) fontesProntas = Promise.all([
-      document.fonts?.load('700 80px "Space Grotesk"'), document.fonts?.load('500 40px "Manrope"'), document.fonts?.load('700 40px "Manrope"'),
-    ]).catch(() => {});
-    return fontesProntas;
-  }
-  async function desenharCarrosseis(soId, soI) {
-    const blocos = document.querySelectorAll("[data-carrossel]");
-    if (!blocos.length) return;
-    await carregarFontes();
-    blocos.forEach((b) => {
-      const id = b.dataset.carrossel; if (soId && soId !== id) return;
-      const s = dados.saidas[id]; if (!s?.slides) return;
-      s.slides.forEach((sl, i) => {
-        if (soI != null && soI !== i) return;
-        const img = document.getElementById(`ci-${id}-${i}`);
-        if (img) img.src = desenharSlide(sl, i, s.slides.length, dados.respostas.tema_carrossel || "escuro");
-      });
-    });
-  }
-  function baixarImagem(src, nome) {
-    const a = document.createElement("a"); a.href = src; a.download = nome; document.body.appendChild(a); a.click(); a.remove();
   }
 
   // ================================================================ PÁGINA DE VENDAS
@@ -681,7 +576,6 @@
   function atualizarFerr(id) {
     const el = document.getElementById("f-" + id);
     if (el) el.outerHTML = ferrHTML(id);
-    desenharCarrosseis(id);
   }
 
   function viewEtapa(n) {
@@ -805,13 +699,8 @@
         confirmarReset = false; dados = novosDados(); await salvarAgora();
         toast("Mapa recomeçado!"); location.hash = "#/etapa/1"; return;
       }
-      case "carr-editar": { carrEditando.has(id) ? carrEditando.delete(id) : carrEditando.add(id); atualizarFerr(id); return; }
-      case "carr-um": { const img = document.getElementById(`ci-${id}-${el.dataset.i}`); if (img?.src) baixarImagem(img.src, `slide-${Number(el.dataset.i) + 1}.png`); return; }
-      case "carr-baixar": {
-        const n = dados.saidas[id]?.slides?.length || 0;
-        for (let i = 0; i < n; i++) { const img = document.getElementById(`ci-${id}-${i}`); if (img?.src) baixarImagem(img.src, `slide-${i + 1}.png`); await new Promise((r) => setTimeout(r, 450)); }
-        return toast("Slides baixados! Agora é só postar ✨");
-      }
+      case "carr-copiar": return copiar(textoSlides(dados.saidas[id]));
+      case "slide-copiar": { const sl = dados.saidas[id]?.slides?.[Number(el.dataset.i)]; return copiar(sl ? `${sl.titulo}${sl.texto ? "\n" + sl.texto : ""}` : ""); }
       case "carr-legenda": return copiar(dados.saidas[id]?.legenda || "");
       case "publicar-pagina": return publicarPagina(id);
       case "copiar-link-pagina": return copiar(urlPagina(dados.respostas.pagina_slug));
@@ -848,14 +737,7 @@
   });
 
   let timerSalvo = null;
-  let timerSlide = null;
   document.addEventListener("input", (ev) => {
-    const sl = ev.target.closest("[data-slide]");
-    if (sl) {
-      const [id, i, campo] = sl.dataset.slide.split("|"), s = dados.saidas[id];
-      if (s?.slides?.[i]) { s.slides[i][campo] = sl.value; salvar(); clearTimeout(timerSlide); timerSlide = setTimeout(() => desenharCarrosseis(id, Number(i)), 250); }
-      return;
-    }
     const pt = ev.target.closest("[data-pagina-texto]");
     if (pt) { const s = dados.saidas[pt.dataset.paginaTexto]; if (s) { s.texto = pt.value; salvar(); } return; }
     const el = ev.target.closest("[data-campo]");
@@ -871,7 +753,6 @@
     const el = ev.target.closest("select[data-campo]");
     if (el) {
       dados.respostas[el.dataset.campo] = el.value; salvar(); atualizarBotoes();
-      if (el.dataset.campo === "tema_carrossel") desenharCarrosseis();
     }
   });
 

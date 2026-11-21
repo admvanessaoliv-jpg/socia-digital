@@ -352,3 +352,12 @@ svg{flex-shrink:0}
 .f-lista li span{color:var(--suave)}
 .f-lista.evitar li{color:var(--suave);padding-left:18px;position:relative}
 .f-lista.evitar li::before{content:"✕";position:absolute;left:0;color:var(--erro);font-size:12px}
+
+.slides-txt{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.slide-txt{padding:16px;border:1px solid var(--linha-forte);border-radius:12px;background:var(--papel);display:grid;gap:6px;align-content:start}
+.slide-txt.capa{border-color:var(--neon-borda)}
+.slide-txt.pitch{border-color:rgba(61,220,255,.35)}
+.slide-cab{display:flex;align-items:center;gap:8px}
+.slide-cab small{flex:1;color:var(--claro);font-size:12px;text-transform:uppercase;letter-spacing:.08em}
+.slide-txt b{font-family:var(--titulo);font-size:17px;line-height:1.3}
+.slide-txt p{color:var(--suave);font-size:14px;margin:0}
