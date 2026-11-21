@@ -8,12 +8,14 @@
 //   pagina       -> permite publicar a página de vendas
 // (Os comandos da IA ficam no Supabase, em functions/socia-ia.)
 // =====================================================================
-window.COMECO = ["nicho", "bio", "carrossel", "reels", "ideias_produto", "mecanismo", "pagina_vendas"];
+window.COMECO = ["raio_x", "nicho", "bio", "carrossel", "reels", "ideias_produto", "mecanismo", "pagina_vendas"];
 
 window.CATEGORIAS = [
   {
     id: "instagram", titulo: "Instagram", desc: "Arrume a vitrine antes de vender.",
     ferramentas: [
+      { id: "raio_x", titulo: "Raio-X do perfil", desc: "Mande prints do seu perfil e do Insights: a Sócia mostra o que trava, o que funciona e cria os conteúdos da semana para o seu perfil.",
+        campo: { tipo: "imagens", obrig: true, rotulo: "Seus prints (de 1 a 5)", dica: "Tire print de: 1) topo do perfil (foto, nome, bio, destaques); 2) a grade de posts; 3) Insights: visão geral e os posts com mais alcance." } },
       { id: "nicho", titulo: "Descobrir meu nicho", desc: "Conte o que você viveu ou sabe fazer e receba 3 nichos com a cliente ideal de cada um.", escolha: "nicho", botaoEscolha: "Usar este nicho",
         campo: { rotulo: "O que você já viveu, superou ou sabe fazer?", tipo: "area", obrig: true, placeholder: "Ex.: sou mãe de 3, saí das dívidas, gosto de cozinhar e as amigas sempre me pedem conselho sobre casamento" } },
       { id: "bio", titulo: "Bio e nome do perfil", desc: "3 bios que vendem e 3 nomes de perfil que aparecem na busca." },

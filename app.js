@@ -24,6 +24,7 @@
   let chatEnviando = false;
   let modoRecuperacao = false;
   let confirmarReset = false;
+  let prints = []; // imagens do Raio-X (ficam só na tela, não são salvas)
 
 
   function novosDados() { return { respostas: {}, saidas: {}, concluidas: [], checks: {}, chat: [] }; }
@@ -173,6 +174,9 @@
       const n = corpo.ferramenta === "nicho" ? ["Mães que querem voltar a orar", "Mulheres ansiosas que buscam paz", "Esposas que querem organizar a casa"] : ["E-book: 21 Dias no Secreto", "Desafio: 7 Dias de Paz", "Minicurso: Rotina de Oração Real"];
       return `Este é um exemplo do modo demonstração.\n\n${n.map((t, i) => `### OPÇÃO ${i + 1}: ${t}\n**Para quem:** exemplo de cliente.\n**A dor que você resolve:** exemplo de dor.\n**Por que você:** exemplo.`).join("\n\n")}\n\n## Minha recomendação\nComece pela opção 1: é a que mais combina com a sua história.`;
     }
+    if (corpo.ferramenta === "raio_x") {
+      return `## Nota do perfil: 6/10\nExemplo do modo demonstração (${(corpo.imagens || []).length} print(s) recebido(s)). Com a IA ligada, a Sócia lê os seus prints de verdade.\n\n## O que está travando\n- A bio não diz para quem é nem qual a promessa\n- As capas não usam as fórmulas que param a rolagem\n\n## O que está funcionando\n- Os posts com passo a passo tiveram mais alcance\n\n## Ajustes de hoje\n- Nova bio...\n\n## Conteúdos da semana\n- Carrossel: Durante 7 noites...`;
+    }
     if (corpo.ferramenta === "carrossel") {
       const sl = [["Durante 7 noites, faça isto antes de dormir", "e veja a sua casa mudar"], ["Desligue o celular 30 minutos antes", "A sua mente precisa de silêncio para descansar de verdade."], ["Escreva 3 coisas boas do dia", "Gratidão muda o foco do que falta para o que você já tem."], ["Ore pelo nome de cada filho", "Coloque diante de Deus o que você não consegue resolver sozinha."], ["Prepare o dia seguinte", "Separe a roupa e a lista: amanhã começa mais leve."], ["Durma no mesmo horário", "Rotina simples é o que sustenta a mudança."], ["Quer a jornada completa de 21 noites?", "Está tudo no meu guia. Clique no link da bio."]];
       return sl.map(([t, x], i) => `### SLIDE ${i + 1}\nTÍTULO: ${t}\nTEXTO: ${x}`).join("\n") + "\n### LEGENDA\nSalve este post e comece hoje à noite. Qual dessas você vai fazer primeiro? #rotina #fé #mulhercristã";
@@ -190,7 +194,9 @@
     const extra = f.campo ? (dados.respostas["x_" + id] || "").trim() : "";
     gerando[id] = true; delete erros[id]; atualizarFerr(id);
     try {
-      const texto = await chamarIA({ ferramenta: id, extra });
+      const corpo = { ferramenta: id, extra };
+      if (f.campo?.tipo === "imagens") corpo.imagens = prints.map((p) => ({ media_type: "image/jpeg", data: p.data }));
+      const texto = await chamarIA(corpo);
       dados.saidas[id] = { texto, em: new Date().toISOString(), extra };
       if (f.carrossel) Object.assign(dados.saidas[id], lerSlides(texto));
       await salvarAgora();
@@ -371,12 +377,13 @@
       <h1 class="titulo">Olá, <em>${esc(primeiroNome())}</em>.</h1>
       <p class="lead" style="margin-bottom:26px">Escolha uma ferramenta. A Sócia cria no método da Vanessa, pronto para você copiar e usar.</p>
       <section class="cartao negocio">
-        <div class="cartao-cab"><span class="ic">${I.pessoa}</span><div><h4>Meu negócio</h4><p class="desc">Preencha uma vez: todas as ferramentas usam. <span class="salvo" id="salvo"></span></p></div></div>
+        <div class="cartao-cab"><span class="ic">${I.pessoa}</span><div><h4>Meu negócio</h4><p class="desc">Preencha uma vez: todas as ferramentas usam. Salva sozinho enquanto você digita. <span class="salvo" id="salvo"></span></p></div></div>
         <div class="tres">
           <div class="campo"><label for="c-nicho">Meu nicho</label><input class="input" id="c-nicho" data-campo="nicho" placeholder="Ex.: mães cristãs que querem sair das dívidas" value="${esc(r.nicho || "")}"><a class="mini-link" href="#/f/nicho">Não sabe? Descobrir meu nicho ${I.seta}</a></div>
           <div class="campo"><label for="c-arroba">Meu @</label><input class="input" id="c-arroba" data-campo="arroba" placeholder="@seuperfil" value="${esc(r.arroba || "")}"></div>
           <div class="campo"><label for="c-produto">Meu produto</label><input class="input" id="c-produto" data-campo="produto" placeholder="Ex.: E-book 21 Dias Sem Dívidas" value="${esc(r.produto || "")}"><a class="mini-link" href="#/f/ideias_produto">Ainda não tem? Ideias de produto ${I.seta}</a></div>
         </div>
+        <div class="linha-acoes" style="margin-top:4px"><button class="btn btn-pri" data-acao="salvar-negocio">${I.check} Salvar</button></div>
       </section>
       <div class="secao-tit"><h3>Por onde começar</h3><span class="olho" style="color:var(--suave)">sugestão</span></div>
       <div class="chips">${comeco}</div>
@@ -402,6 +409,7 @@
 
   function bloqueio(id) {
     const f = FERR[id];
+    if (f?.campo?.tipo === "imagens") return prints.length ? "" : "Adicione pelo menos 1 print para liberar.";
     if (f?.campo?.obrig && !String(dados.respostas["x_" + id] || "").trim()) return "Preencha o campo acima para liberar.";
     return "";
   }
@@ -555,7 +563,11 @@
     if (!f) { location.hash = "#/inicio"; return ""; }
     const s = dados.saidas[id], g = gerando[id], motivo = g ? "" : bloqueio(id), c = f.campo;
     const v = dados.respostas["x_" + id] || "";
-    const campo = c ? `<div class="campo"><label for="x-${id}">${esc(c.rotulo)}${c.obrig ? ' <span class="obrig">*</span>' : ""}</label>${c.tipo === "area"
+    const campo = c?.tipo === "imagens" ? `<div class="campo"><label>${esc(c.rotulo)} <span class="obrig">*</span></label>${c.dica ? `<div class="dica">${esc(c.dica)}</div>` : ""}
+        <div class="prints">${prints.map((p, i) => `<figure><img src="data:image/jpeg;base64,${p.data}" alt="Print ${i + 1}"><button class="btn-leve" data-acao="tirar-print" data-i="${i}" aria-label="Tirar print ${i + 1}">✕</button></figure>`).join("")}
+          ${prints.length < 5 ? `<label class="add-print"><input type="file" accept="image/*" multiple data-prints hidden>${I.baixar}<span>Adicionar prints</span></label>` : ""}</div>
+        <small class="dica-cel">Os prints não ficam salvos: são usados só nesta análise.</small></div>`
+      : c ? `<div class="campo"><label for="x-${id}">${esc(c.rotulo)}${c.obrig ? ' <span class="obrig">*</span>' : ""}</label>${c.tipo === "area"
       ? `<textarea class="area" id="x-${id}" data-campo="x_${id}" placeholder="${esc(c.placeholder || "")}">${esc(v)}</textarea>`
       : `<input class="input" id="x-${id}" data-campo="x_${id}" placeholder="${esc(c.placeholder || "")}" value="${esc(v)}">`}</div>` : "";
     const outras = (CATS.find((x) => x.id === f.cat)?.ferramentas || []).filter((x) => x.id !== id).slice(0, 3);
@@ -625,6 +637,27 @@
       <div style="display:flex;gap:10px;flex-wrap:wrap">${C.SUPORTE_URL ? `<a class="btn btn-sec" href="${esc(C.SUPORTE_URL)}" target="_blank" rel="noopener">Falar com o suporte</a>` : ""}<button class="btn btn-leve" data-acao="sair">${I.sair} Sair</button></div>`;
   }
 
+  // Reduz o print para no máximo 1280px (fica mais rápido e mais barato)
+  function lerPrint(arquivo) {
+    return new Promise((ok, falha) => {
+      const leitor = new FileReader();
+      leitor.onerror = falha;
+      leitor.onload = () => {
+        const img = new Image();
+        img.onerror = falha;
+        img.onload = () => {
+          const k = Math.min(1, 1280 / Math.max(img.width, img.height));
+          const c = document.createElement("canvas");
+          c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+          c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+          ok({ data: c.toDataURL("image/jpeg", 0.82).split(",")[1] });
+        };
+        img.src = leitor.result;
+      };
+      leitor.readAsDataURL(arquivo);
+    });
+  }
+
   // ------------------------------------------------------------------ eventos
   document.addEventListener("click", async (ev) => {
     const el = ev.target.closest("[data-acao]");
@@ -643,6 +676,13 @@
       case "copiar": return copiar(dados.saidas[id]?.texto || "");
       case "baixar": return baixar(slug(FERR[id].titulo), dados.saidas[id]?.texto || "");
       case "expandir": { const t = document.getElementById("t-" + id); if (t) { t.classList.toggle("aberto"); t.style.maxHeight = t.classList.contains("aberto") ? "none" : ""; } return; }
+      case "tirar-print": prints.splice(Number(el.dataset.i), 1); return render();
+      case "salvar-negocio": {
+        ["nicho", "arroba", "produto"].forEach((k) => { const c = document.getElementById("c-" + k); if (c) dados.respostas[k] = c.value.trim(); });
+        await salvarAgora();
+        const s = document.getElementById("salvo"); if (s) s.innerHTML = `${I.check} Salvo`;
+        return toast("Meu negócio salvo! ✨");
+      }
       case "copiar-bloco": return copiar(el.closest(".bloco-cod")?.querySelector("pre")?.textContent || "");
       case "recomecar": {
         if (!confirmarReset) { confirmarReset = true; return render(); }
@@ -700,7 +740,13 @@
     if (s) { s.textContent = "Salvando..."; clearTimeout(timerSalvo); timerSalvo = setTimeout(() => { s.innerHTML = `${I.check} Salvo`; }, 900); }
   });
 
-  document.addEventListener("change", (ev) => {
+  document.addEventListener("change", async (ev) => {
+    if (ev.target.matches("[data-prints]")) {
+      const arquivos = [...ev.target.files].filter((a) => a.type.startsWith("image/")).slice(0, 5 - prints.length);
+      try { for (const a of arquivos) prints.push(await lerPrint(a)); }
+      catch { toast("Não consegui ler uma das imagens."); }
+      return render();
+    }
     const el = ev.target.closest("select[data-campo]");
     if (el) {
       dados.respostas[el.dataset.campo] = el.value; salvar(); atualizarBotoes();
