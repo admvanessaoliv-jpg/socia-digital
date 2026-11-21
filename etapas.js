@@ -42,16 +42,17 @@ window.ETAPAS = [
     ],
   },
   {
-    id: 3, titulo: "Conteúdo para atrair", subtitulo: "Junte as pessoas certas",
-    intro: "Antes de vender, atraia. Poste por pelo menos 7 dias falando com a sua cliente: é assim que ela começa a confiar em você.",
-    principal: "conteudo_7",
+    id: 3, titulo: "Conteúdo para atrair", subtitulo: "Carrosséis no método da Vanessa",
+    intro: "O que mais vende no Instagram são carrosséis: capa que para a rolagem, direção clara em cada slide e, no último slide, o convite. A Sócia escreve no método e o app desenha as imagens prontas para você postar.",
+    principal: "carrossel_viral",
+    formulas: true,
     campos: [],
     ferramentas: [
-      { id: "conteudo_7", titulo: "7 Dias de Conteúdo", descricao: "Uma semana de posts com gancho, roteiro curto e legenda." },
-      { id: "roteiro_reels", titulo: "Roteiro de Reels", descricao: "Um roteiro pronto sobre o tema que você quiser.", extra: { rotulo: "Tema do Reels", placeholder: "Ex.: 3 sinais de que você está vivendo no automático" } },
+      { id: "carrossel_viral", titulo: "Carrossel Pronto", descricao: "A Sócia escreve e o app desenha os 7 slides (1080x1350) para baixar e postar, com legenda.", carrossel: true, extra: { rotulo: "Tema (opcional)", placeholder: "Deixe em branco e a Sócia escolhe. Ex.: Durante 7 noites, ore pela sua casa", opcional: true } },
+      { id: "capas_10", titulo: "10 Ideias de Capa", descricao: "Capas no método para você escolher o tema dos próximos carrosséis." },
     ],
     checklist: [
-      "Postei os 7 dias",
+      "Postei 1 carrossel por dia durante 7 dias",
       "Respondi os comentários e o direct",
     ],
   },
@@ -72,21 +73,21 @@ window.ETAPAS = [
     ],
   },
   {
-    id: 5, titulo: "Oferta e Kiwify", subtitulo: "Preço, bônus e página de vendas",
-    intro: "A Sócia monta a sua oferta e o texto da página de vendas. Depois, você cadastra tudo na Kiwify.",
+    id: 5, titulo: "Oferta e página", subtitulo: "Preço, bônus e página de vendas no ar",
+    intro: "A Sócia monta a sua oferta e escreve a página de vendas. Você cadastra o produto na Kiwify, cola o link do checkout e a sua página fica no ar, com link próprio para colocar na bio.",
     principal: "oferta",
     campos: [
       { id: "preco", rotulo: "Já pensou em um preço?", tipo: "texto", dica: "Pode deixar em branco: a Sócia sugere." },
     ],
     ferramentas: [
       { id: "oferta", titulo: "Minha Oferta", descricao: "Promessa, bônus, garantia e preço." },
-      { id: "pagina_vendas", titulo: "Texto da Página de Vendas", descricao: "Todas as partes da página, prontas para colar." },
+      { id: "pagina_vendas", titulo: "Minha Página de Vendas", descricao: "A Sócia escreve a página e você publica com 1 clique.", pagina: true },
     ],
     checklist: [
       "Criei minha conta na Kiwify",
       "Cadastrei o produto com nome, descrição e preço",
       "Coloquei o material na área de membros",
-      "Montei a página de vendas e fiz uma compra de teste",
+      "Publiquei minha página e fiz uma compra de teste",
     ],
   },
   {
@@ -102,7 +103,7 @@ window.ETAPAS = [
       { id: "direct", titulo: "Respostas do Direct", descricao: "O que responder para “está caro”, “vou pensar” e mais." },
     ],
     checklist: [
-      "Link da Kiwify na bio",
+      "Link da minha página na bio",
       "Destaque do produto pronto",
       "Respostas do direct salvas nas respostas rápidas",
       "Publiquei! 🎉",

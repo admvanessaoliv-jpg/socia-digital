@@ -322,3 +322,33 @@ svg{flex-shrink:0}
 .op-tit{display:flex;align-items:flex-start;gap:10px}
 .op-tit b{font-family:var(--titulo);font-size:16.5px;line-height:1.3}
 @media (max-width:920px){.opcoes{grid-template-columns:1fr}}
+
+/* ---------- carrossel ---------- */
+.carr-barra{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.carr-barra .select{max-width:230px}
+.carr-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.carr-grade figure{margin:0;display:flex;flex-direction:column;gap:6px}
+.carr-grade img{width:100%;aspect-ratio:4/5;border-radius:10px;border:1px solid var(--linha-forte);background:#000;display:block}
+.carr-grade figcaption{text-align:center}
+.dica-cel{display:block;color:var(--claro);font-size:12.5px;margin-top:10px}
+.carr-edicao{display:grid;gap:12px;margin-top:18px}
+.carr-ed{display:flex;gap:12px;align-items:flex-start}
+.carr-ed>div{flex:1;display:grid;gap:8px}
+.carr-ed .area{min-height:70px}
+.legenda{margin-top:18px;padding:16px;border:1px solid var(--linha-forte);border-radius:12px;background:var(--papel)}
+.legenda-cab{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+/* ---------- página publicada ---------- */
+.pag-prev{padding:20px;border-radius:12px;background:#FBF7F2;color:#2A2225;margin-bottom:14px}
+.pag-prev h3{font-family:var(--titulo);font-size:24px;line-height:1.2;margin:6px 0}
+.pag-prev p{color:#6E6266}
+.pag-editar summary{cursor:pointer;color:var(--neon);font-weight:600;margin-bottom:10px}
+.pub{margin-top:18px;display:grid;gap:4px}
+.pub .btn{justify-self:start}
+.pag-link{margin-top:16px;padding:16px;border-radius:12px;border:1px solid var(--neon-borda);background:var(--neon-bg);display:grid;gap:10px}
+/* ---------- fórmulas ---------- */
+.f-tit{display:block;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--neon);margin-bottom:8px}
+.f-lista{list-style:none;display:grid;gap:10px;margin-bottom:12px}
+.f-lista li{display:grid;gap:2px;font-size:14px}
+.f-lista li span{color:var(--suave)}
+.f-lista.evitar li{color:var(--suave);padding-left:18px;position:relative}
+.f-lista.evitar li::before{content:"✕";position:absolute;left:0;color:var(--erro);font-size:12px}

@@ -169,6 +169,13 @@
       const n = corpo.ferramenta === "nichos" ? ["Mães que querem voltar a orar", "Mulheres ansiosas que buscam paz", "Esposas que querem organizar a casa"] : ["E-book: 21 Dias no Secreto", "Desafio: 7 Dias de Paz", "Minicurso: Rotina de Oração Real"];
       return `Este é um exemplo do modo demonstração.\n\n${n.map((t, i) => `### OPÇÃO ${i + 1}: ${t}\n**Para quem:** exemplo de cliente.\n**A dor que você resolve:** exemplo de dor.\n**Por que você:** exemplo.`).join("\n\n")}\n\n## Minha recomendação\nComece pela opção 1: é a que mais combina com a sua história.`;
     }
+    if (corpo.ferramenta === "carrossel_viral") {
+      const sl = [["Durante 7 noites, faça isto antes de dormir", "e veja a sua casa mudar"], ["Desligue o celular 30 minutos antes", "A sua mente precisa de silêncio para descansar de verdade."], ["Escreva 3 coisas boas do dia", "Gratidão muda o foco do que falta para o que você já tem."], ["Ore pelo nome de cada filho", "Coloque diante de Deus o que você não consegue resolver sozinha."], ["Prepare o dia seguinte", "Separe a roupa e a lista: amanhã começa mais leve."], ["Durma no mesmo horário", "Rotina simples é o que sustenta a mudança."], ["Quer a jornada completa de 21 noites?", "Está tudo no meu guia. Clique no link da bio."]];
+      return sl.map(([t, x], i) => `### SLIDE ${i + 1}\nTÍTULO: ${t}\nTEXTO: ${x}`).join("\n") + "\n### LEGENDA\nSalve este post e comece hoje à noite. Qual dessas você vai fazer primeiro? #rotina #fé #mulhercristã";
+    }
+    if (corpo.ferramenta === "pagina_vendas") {
+      return "### TITULO\n21 noites para dormir em paz e acordar com direção\n### SUBTITULO\nUm guia simples para mulheres cansadas de viver no automático.\n### DOR\nVocê deita exausta e a mente não para.\n### VIRADA\nCom pequenos passos por noite, sua rotina muda.\n### CONTEUDO\n- 21 noites guiadas\n- Exercícios simples\n### BONUS\n- Checklist da noite\n### SOBRE\n[SUA HISTÓRIA AQUI]\n### GARANTIA\n7 dias de garantia.\n### PRECO\nR$ 29 à vista ou em até 3x.\n### FAQ\n**Como recebo?**\nPor e-mail, na hora.\n### CHAMADA\nSua próxima noite pode ser diferente.";
+    }
     const f = FERR[corpo.ferramenta] || { titulo: "Material" };
     return `## ${f.titulo}\n\nEste é um **exemplo do modo demonstração**. Com o Supabase e a chave da IA configurados, a Sócia cria aqui o material completo a partir das suas respostas${corpo.extra ? ` sobre *${corpo.extra}*` : ""}.\n\n### Como vai ficar\n1. Um diagnóstico do que você contou\n2. O material pronto para copiar e usar\n3. Ajustes sugeridos para a sua cliente ideal\n\n> Tudo fica salvo em **Meus materiais**.\n\n---\n\n**Seu próximo passo:** leia, ajuste com a sua história real e marque a etapa como concluída.`;
   }
@@ -181,6 +188,7 @@
     try {
       const texto = await chamarIA({ ferramenta: id, extra });
       dados.saidas[id] = { texto, em: new Date().toISOString(), extra };
+      if (f.carrossel) Object.assign(dados.saidas[id], lerSlides(texto));
       await salvarAgora();
     } catch (e) {
       erros[id] = e.message;
@@ -339,6 +347,7 @@
         <div class="conteudo">${corpo}</div>
       </main>
     </div>`;
+    desenharCarrosseis();
     if (r.nome === "socia") {
       const l = document.getElementById("chat-lista"); if (l) l.scrollTop = l.scrollHeight;
       const t = document.getElementById("chat-texto"); if (t && !chatEnviando && window.innerWidth > 920) t.focus();
@@ -411,7 +420,7 @@
     if (!etapaLiberada(e.id)) return `Conclua a etapa ${e.id - 1} primeiro.`;
     const fl = faltando(e);
     if (fl.length) return `Responda ${fl.length === 1 ? "a pergunta obrigatória" : `as ${fl.length} perguntas obrigatórias`} acima para liberar.`;
-    if (f.extra && !String(dados.respostas["x_" + id] || "").trim()) return `Escreva o tema para liberar.`;
+    if (f.extra && !f.extra.opcional && !String(dados.respostas["x_" + id] || "").trim()) return `Escreva o tema para liberar.`;
     if (f.requer && !dados.respostas[f.requer]) return "Escolha uma das opções acima para liberar.";
     return "";
   }
@@ -450,7 +459,10 @@
       ${res}</div>`;
   }
   function corpoSaida(id, s) {
-    const f = FERR[id], o = f.escolha ? opcoes(s.texto) : null;
+    const f = FERR[id];
+    if (f.carrossel) { const h = carrosselHTML(id, s); if (h) return h; }
+    if (f.pagina) { const h = paginaHTML(id, s); if (h) return h; }
+    const o = f.escolha ? opcoes(s.texto) : null;
     if (!o) return `<div class="texto-ia" id="t-${id}">${md(s.texto)}</div>`;
     const escolhido = dados.respostas[f.escolha];
     return `<div class="texto-ia aberto" id="t-${id}">${o.intro ? md(o.intro) : ""}
@@ -461,9 +473,215 @@
       }).join("")}</div>${o.rec ? md(o.rec) : ""}</div>`;
   }
 
+
+  // ================================================================ CARROSSEL
+  const TEMAS = {
+    escuro: { nome: "Escuro elegante", bg: "#121212", bg2: "#1C1C1C", tx: "#F6F1E9", sub: "#CFC6B8", ac: "#D9B26F" },
+    claro: { nome: "Claro delicado", bg: "#FBF7F2", bg2: "#F1E7DC", tx: "#2A2225", sub: "#6E6266", ac: "#B0646F" },
+    verde: { nome: "Verde sofisticado", bg: "#1F3D36", bg2: "#28504A", tx: "#FFFFFF", sub: "#D7E6DF", ac: "#F2D06B" },
+    lilas: { nome: "Lilás suave", bg: "#EFE9F7", bg2: "#E2D8F0", tx: "#2C2340", sub: "#5E5470", ac: "#7B5EA7" },
+  };
+  const carrEditando = new Set();
+
+  function lerSlides(texto) {
+    const t = String(texto || "");
+    const partes = t.split(/^#{2,4}\s*SLIDE\s*(\d+)[^\n]*$/mi);
+    const slides = [];
+    for (let k = 1; k < partes.length; k += 2) {
+      let corpo = partes[k + 1] || "";
+      const li = corpo.search(/^#{2,4}\s*LEGENDA/mi);
+      if (li >= 0) corpo = corpo.slice(0, li);
+      const tm = corpo.match(/T[ÍI]TULO\s*:\s*(.*)/i), xm = corpo.match(/TEXTO\s*:\s*([\s\S]*)/i);
+      const limpa = (v) => String(v || "").replace(/\*\*/g, "").replace(/^\(.*\)$/s, "").trim();
+      slides.push({ titulo: limpa(tm && tm[1]), texto: limpa(xm && xm[1]) });
+    }
+    const lm = t.match(/^#{2,4}\s*LEGENDA[^\n]*\n([\s\S]*)$/mi);
+    return { slides, legenda: lm ? lm[1].trim() : "" };
+  }
+
+  function carrosselHTML(id, s) {
+    if (!s.slides) Object.assign(s, lerSlides(s.texto));
+    if (!s.slides || s.slides.length < 2) return "";
+    const tema = dados.respostas.tema_carrossel || "escuro";
+    const ed = carrEditando.has(id);
+    return `<div class="texto-ia aberto" data-carrossel="${id}">
+      <div class="carr-barra">
+        <select class="select" data-campo="tema_carrossel" aria-label="Visual do carrossel">${Object.entries(TEMAS).map(([k, t]) => `<option value="${k}" ${k === tema ? "selected" : ""}>${t.nome}</option>`).join("")}</select>
+        <button class="btn btn-pri" data-acao="carr-baixar" data-id="${id}">${I.baixar} Baixar os ${s.slides.length} slides</button>
+        <button class="btn btn-sec" data-acao="carr-editar" data-id="${id}">${I.lapis} ${ed ? "Fechar edição" : "Editar textos"}</button>
+      </div>
+      <div class="carr-grade">${s.slides.map((_, i) => `<figure><img id="ci-${id}-${i}" alt="Slide ${i + 1}"><figcaption><button class="btn-leve" data-acao="carr-um" data-id="${id}" data-i="${i}">${I.baixar} Slide ${i + 1}</button></figcaption></figure>`).join("")}</div>
+      <p class="dica-cel">No celular: toque e segure na imagem e escolha “Salvar imagem”.</p>
+      ${ed ? `<div class="carr-edicao">${s.slides.map((sl, i) => `<div class="carr-ed"><span class="passo">${i + 1}</span><div><input class="input" data-slide="${id}|${i}|titulo" value="${esc(sl.titulo)}" aria-label="Título do slide ${i + 1}"><textarea class="area" data-slide="${id}|${i}|texto" aria-label="Texto do slide ${i + 1}">${esc(sl.texto)}</textarea></div></div>`).join("")}</div>` : ""}
+      <div class="legenda"><div class="legenda-cab"><b>Legenda</b><button class="btn-leve" data-acao="carr-legenda" data-id="${id}">${I.copiar} Copiar legenda</button></div><p>${esc(s.legenda).replace(/\n/g, "<br>")}</p></div>
+    </div>`;
+  }
+
+  function quebrar(ctx, txt, max) {
+    const palavras = String(txt || "").split(/\s+/).filter(Boolean), linhas = [];
+    let linha = "";
+    for (const p of palavras) {
+      const teste = linha ? linha + " " + p : p;
+      if (ctx.measureText(teste).width > max && linha) { linhas.push(linha); linha = p; } else linha = teste;
+    }
+    if (linha) linhas.push(linha);
+    return linhas;
+  }
+  function caber(ctx, txt, max, tam, minimo, maxLinhas, peso, fam) {
+    for (let t = tam; t >= minimo; t -= 4) {
+      ctx.font = `${peso} ${t}px ${fam}`;
+      const l = quebrar(ctx, txt, max);
+      if (l.length <= maxLinhas) return { l, t };
+    }
+    ctx.font = `${peso} ${minimo}px ${fam}`;
+    return { l: quebrar(ctx, txt, max), t: minimo };
+  }
+  function retang(x, a, b, w, h, r) {
+    x.beginPath(); x.moveTo(a + r, b); x.arcTo(a + w, b, a + w, b + h, r); x.arcTo(a + w, b + h, a, b + h, r);
+    x.arcTo(a, b + h, a, b, r); x.arcTo(a, b, a + w, b, r); x.closePath();
+  }
+
+  function desenharSlide(sl, i, total, chaveTema) {
+    const W = 1080, H = 1350, M = 96, T = TEMAS[chaveTema] || TEMAS.escuro;
+    const fam = '"Manrope", "Segoe UI", Arial, sans-serif', famT = '"Space Grotesk", "Manrope", Arial, sans-serif';
+    const c = document.createElement("canvas"); c.width = W; c.height = H;
+    const x = c.getContext("2d");
+    x.fillStyle = T.bg; x.fillRect(0, 0, W, H);
+    x.fillStyle = T.bg2; x.beginPath(); x.arc(W - 40, 110, 250, 0, Math.PI * 2); x.fill();
+    x.textBaseline = "top";
+    const arroba = String(dados.respostas.arroba || "").trim();
+    const capa = i === 0, ultimo = i === total - 1;
+    if (capa) {
+      const r = caber(x, sl.titulo, W - 2 * M, 104, 60, 6, "700", famT);
+      const alt = r.l.length * r.t * 1.12;
+      let y = Math.max(M + 60, (H - alt) / 2 - 80);
+      x.fillStyle = T.tx; r.l.forEach((ln, k) => x.fillText(ln, M, y + k * r.t * 1.12));
+      y += alt + 34; x.fillStyle = T.ac; x.fillRect(M, y, 120, 8); y += 42;
+      if (sl.texto) { const s2 = caber(x, sl.texto, W - 2 * M, 46, 32, 3, "500", fam); x.fillStyle = T.sub; s2.l.forEach((ln, k) => x.fillText(ln, M, y + k * s2.t * 1.3)); }
+      x.font = `700 34px ${fam}`; x.fillStyle = T.ac; x.textAlign = "right"; x.fillText("Arraste →", W - M, H - M - 34); x.textAlign = "left";
+    } else if (ultimo) {
+      x.font = `700 40px ${famT}`; x.fillStyle = T.ac; x.fillText(String(i + 1).padStart(2, "0"), M, M);
+      const bx = M - 24, by = M + 110, bw = W - 2 * M + 48, bh = H - by - M - 80;
+      x.fillStyle = T.ac; retang(x, bx, by, bw, bh, 40); x.fill();
+      const r = caber(x, sl.titulo, bw - 120, 80, 48, 5, "700", famT);
+      const s2 = sl.texto ? caber(x, sl.texto, bw - 120, 44, 30, 6, "600", fam) : { l: [], t: 0 };
+      const alt = r.l.length * r.t * 1.12 + (s2.l.length ? 48 + s2.l.length * s2.t * 1.35 : 0);
+      let y = by + (bh - alt) / 2;
+      x.font = `700 ${r.t}px ${famT}`; x.fillStyle = T.bg; r.l.forEach((ln, k) => x.fillText(ln, bx + 60, y + k * r.t * 1.12));
+      y += r.l.length * r.t * 1.12 + 48;
+      if (s2.l.length) { x.font = `600 ${s2.t}px ${fam}`; s2.l.forEach((ln, k) => x.fillText(ln, bx + 60, y + k * s2.t * 1.35)); }
+    } else {
+      x.font = `700 40px ${famT}`; x.fillStyle = T.ac; x.fillText(String(i + 1).padStart(2, "0"), M, M);
+      const r = caber(x, sl.titulo, W - 2 * M, 84, 52, 4, "700", famT);
+      const s2 = sl.texto ? caber(x, sl.texto, W - 2 * M, 54, 34, 9, "500", fam) : { l: [], t: 0 };
+      const alt = r.l.length * r.t * 1.14 + 95 + s2.l.length * s2.t * 1.4;
+      let y = Math.max(M + 110, (H - alt) / 2 - 30);
+      x.font = `700 ${r.t}px ${famT}`; x.fillStyle = T.tx; r.l.forEach((ln, k) => x.fillText(ln, M, y + k * r.t * 1.14));
+      y += r.l.length * r.t * 1.14 + 36; x.fillStyle = T.ac; x.fillRect(M, y, 90, 7); y += 59;
+      if (s2.l.length) { x.font = `500 ${s2.t}px ${fam}`; x.fillStyle = T.sub; s2.l.forEach((ln, k) => x.fillText(ln, M, y + k * s2.t * 1.4)); }
+    }
+    if (arroba) { x.font = `600 30px ${fam}`; x.fillStyle = ultimo ? T.sub : T.sub; x.fillText(arroba.startsWith("@") ? arroba : "@" + arroba, M, H - M - 30); }
+    x.font = `600 28px ${fam}`; x.fillStyle = T.sub; x.textAlign = "right";
+    if (!capa) x.fillText(`${i + 1}/${total}`, W - M, H - M - 28);
+    x.textAlign = "left";
+    return c.toDataURL("image/png");
+  }
+
+  let fontesProntas = null;
+  function carregarFontes() {
+    if (!fontesProntas) fontesProntas = Promise.all([
+      document.fonts?.load('700 80px "Space Grotesk"'), document.fonts?.load('500 40px "Manrope"'), document.fonts?.load('700 40px "Manrope"'),
+    ]).catch(() => {});
+    return fontesProntas;
+  }
+  async function desenharCarrosseis(soId, soI) {
+    const blocos = document.querySelectorAll("[data-carrossel]");
+    if (!blocos.length) return;
+    await carregarFontes();
+    blocos.forEach((b) => {
+      const id = b.dataset.carrossel; if (soId && soId !== id) return;
+      const s = dados.saidas[id]; if (!s?.slides) return;
+      s.slides.forEach((sl, i) => {
+        if (soI != null && soI !== i) return;
+        const img = document.getElementById(`ci-${id}-${i}`);
+        if (img) img.src = desenharSlide(sl, i, s.slides.length, dados.respostas.tema_carrossel || "escuro");
+      });
+    });
+  }
+  function baixarImagem(src, nome) {
+    const a = document.createElement("a"); a.href = src; a.download = nome; document.body.appendChild(a); a.click(); a.remove();
+  }
+
+  // ================================================================ PÁGINA DE VENDAS
+  const CORES_PAGINA = { rosa: "Rosa elegante", verde: "Verde", azul: "Azul", dourado: "Dourado", lilas: "Lilás" };
+  function lerSecoes(texto) {
+    const out = {}, partes = String(texto || "").split(/^#{2,4}\s*([A-Za-zÀ-ú]+)\s*$/m);
+    for (let k = 1; k < partes.length; k += 2) {
+      const nome = partes[k].normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
+      out[nome] = (partes[k + 1] || "").trim();
+    }
+    return out;
+  }
+  const urlPagina = (slug) => location.origin + location.pathname.replace(/[^/]*$/, "") + "pagina.html?p=" + encodeURIComponent(slug);
+
+  function paginaHTML(id, s) {
+    const sec = lerSecoes(s.texto);
+    if (!sec.TITULO) return "";
+    const slug = dados.respostas.pagina_slug, cor = dados.respostas.cor_pagina || "rosa";
+    return `<div class="texto-ia aberto">
+      <div class="pag-prev"><small class="olho">Prévia do topo da página</small><h3>${esc(sec.TITULO)}</h3><p>${esc(sec.SUBTITULO || "")}</p></div>
+      <details class="pag-editar"><summary>Ver ou editar o texto completo da página</summary>
+        <textarea class="area" data-pagina-texto="${id}" rows="16">${esc(s.texto)}</textarea>
+        <small class="dica-cel">Mantenha os marcadores que começam com ### (TITULO, DOR, CONTEUDO...).</small></details>
+      <div class="pub">
+        <div class="campo"><label for="c-checkout">Link do checkout da Kiwify <span class="obrig">*</span></label><div class="dica">Na Kiwify: Produtos → seu produto → Links → copie o link do checkout.</div><input class="input" id="c-checkout" data-campo="checkout" placeholder="https://pay.kiwify.com.br/..." value="${esc(dados.respostas.checkout || "")}"></div>
+        <div class="campo"><label for="c-cor">Cor da página</label><select class="select" id="c-cor" data-campo="cor_pagina">${Object.entries(CORES_PAGINA).map(([k, n]) => `<option value="${k}" ${k === cor ? "selected" : ""}>${n}</option>`).join("")}</select></div>
+        <button class="btn btn-pri" data-acao="publicar-pagina" data-id="${id}">${I.brilho} ${slug ? "Atualizar minha página" : "Publicar minha página"}</button>
+        ${slug ? `<div class="pag-link"><b>${I.check} Sua página está no ar:</b><input class="input" readonly value="${esc(urlPagina(slug))}" aria-label="Link da página"><div class="linha-acoes"><button class="btn btn-sec" data-acao="copiar-link-pagina">${I.copiar} Copiar link</button><a class="btn btn-sec" href="${esc(urlPagina(slug))}" target="_blank" rel="noopener">Abrir página ${I.seta}</a></div><small class="dica-cel">Coloque este link na sua bio do Instagram.</small></div>` : ""}
+      </div></div>`;
+  }
+
+  async function publicarPagina(id) {
+    const s = dados.saidas[id], sec = lerSecoes(s?.texto);
+    const checkout = String(dados.respostas.checkout || "").trim();
+    if (!/^https:\/\/\S+$/.test(checkout)) return toast("Cole o link do checkout da Kiwify (começa com https://).");
+    if (!sec.TITULO) return toast("O texto da página está sem o ### TITULO.");
+    let slugAtual = dados.respostas.pagina_slug;
+    if (!slugAtual) slugAtual = (slug(dados.respostas.produto || perfil.nome || "minha-pagina").slice(0, 40) || "pagina") + "-" + Math.random().toString(36).slice(2, 6);
+    const conteudo = { secoes: sec, checkout, cor: dados.respostas.cor_pagina || "rosa", produto: dados.respostas.produto || "", autora: perfil.nome || "", arroba: dados.respostas.arroba || "" };
+    if (DEMO) { try { localStorage.setItem("sd_pagina_" + slugAtual, JSON.stringify(conteudo)); } catch {} }
+    else {
+      const { error } = await sb.from("paginas").upsert({ slug: slugAtual, user_id: usuaria.id, dados: conteudo, publicada: true, atualizado_em: new Date().toISOString() });
+      if (error) { console.error(error); return toast("Não consegui publicar. Tente de novo."); }
+    }
+    dados.respostas.pagina_slug = slugAtual;
+    await salvarAgora();
+    toast("Página publicada! 🎉");
+    render();
+  }
+
+  const FORMULAS = [
+    ["Prazo + direção + área", "“Durante 7 noites, faça X pela sua Y”"],
+    ["Chamada pela identidade", "“Mãe, não durma sem...” / “Esposa, antes de discutir...”"],
+    ["Número + resultado", "“3 hábitos que mudaram a minha manhã”"],
+    ["Direção clara", "“Faça isso hoje, antes de dormir: ...”"],
+  ];
+  const EVITAR = [
+    "Capa que só faz sentido para quem já conhece a história",
+    "Capa que expõe vergonha: quem sente vergonha não para",
+    "Texto que diminui a seguidora, como se ela não soubesse fazer",
+    "Pitch sem promessa forte: sem promessa forte não vende",
+  ];
+  function formulasHTML() {
+    return `<section class="cartao formulas"><div class="cartao-cab"><span class="ic">${I.brilho}</span><div><h4>As fórmulas de capa da Vanessa</h4><p class="desc">O que fez o perfil dela vender: carrossel com capa que para a rolagem e convite no último slide.</p></div></div>
+      <div class="duas"><div><b class="f-tit">Use</b><ul class="f-lista">${FORMULAS.map(([n, ex]) => `<li><b>${n}</b><span>${ex}</span></li>`).join("")}</ul></div>
+      <div><b class="f-tit">Evite</b><ul class="f-lista evitar">${EVITAR.map((t) => `<li>${t}</li>`).join("")}</ul></div></div></section>`;
+  }
+
   function atualizarFerr(id) {
     const el = document.getElementById("f-" + id);
     if (el) el.outerHTML = ferrHTML(id);
+    desenharCarrosseis(id);
   }
 
   function viewEtapa(n) {
@@ -484,6 +702,7 @@
       ${!liberada ? `<div class="aviso-trava">${I.lista}<div><b>Esta etapa ainda está fechada.</b><span>Termine a etapa ${e.id - 1} (${esc(ant.titulo)}) e marque como concluída para liberar.</span></div><a class="btn btn-sec" href="#/etapa/${e.id - 1}">Ir para a etapa ${e.id - 1}</a></div>` : ""}
       ${e.campos.length ? `${tituloPasso("Responda", "A Sócia usa estas respostas em tudo o que cria. O * indica as obrigatórias.")}
         <section class="cartao"><div class="duas">${e.campos.map(campoHTML).join("")}</div><span class="salvo" id="salvo"></span></section>` : ""}
+      ${e.formulas ? formulasHTML() : ""}
       ${tituloPasso("Gere com a Sócia", e.ferramentas.length > 1 ? "Comece pela primeira; as outras completam." : "")}
       ${e.ferramentas.map((f) => ferrHTML(f.id)).join("")}
       ${e.checklist ? `${tituloPasso("Coloque em prática", "Marque o que você já fez.")}
@@ -586,6 +805,16 @@
         confirmarReset = false; dados = novosDados(); await salvarAgora();
         toast("Mapa recomeçado!"); location.hash = "#/etapa/1"; return;
       }
+      case "carr-editar": { carrEditando.has(id) ? carrEditando.delete(id) : carrEditando.add(id); atualizarFerr(id); return; }
+      case "carr-um": { const img = document.getElementById(`ci-${id}-${el.dataset.i}`); if (img?.src) baixarImagem(img.src, `slide-${Number(el.dataset.i) + 1}.png`); return; }
+      case "carr-baixar": {
+        const n = dados.saidas[id]?.slides?.length || 0;
+        for (let i = 0; i < n; i++) { const img = document.getElementById(`ci-${id}-${i}`); if (img?.src) baixarImagem(img.src, `slide-${i + 1}.png`); await new Promise((r) => setTimeout(r, 450)); }
+        return toast("Slides baixados! Agora é só postar ✨");
+      }
+      case "carr-legenda": return copiar(dados.saidas[id]?.legenda || "");
+      case "publicar-pagina": return publicarPagina(id);
+      case "copiar-link-pagina": return copiar(urlPagina(dados.respostas.pagina_slug));
       case "escolher": {
         const f = FERR[id], o = opcoes(dados.saidas[id]?.texto), op = o?.ops[Number(el.dataset.i)];
         if (!op) return;
@@ -619,7 +848,16 @@
   });
 
   let timerSalvo = null;
+  let timerSlide = null;
   document.addEventListener("input", (ev) => {
+    const sl = ev.target.closest("[data-slide]");
+    if (sl) {
+      const [id, i, campo] = sl.dataset.slide.split("|"), s = dados.saidas[id];
+      if (s?.slides?.[i]) { s.slides[i][campo] = sl.value; salvar(); clearTimeout(timerSlide); timerSlide = setTimeout(() => desenharCarrosseis(id, Number(i)), 250); }
+      return;
+    }
+    const pt = ev.target.closest("[data-pagina-texto]");
+    if (pt) { const s = dados.saidas[pt.dataset.paginaTexto]; if (s) { s.texto = pt.value; salvar(); } return; }
     const el = ev.target.closest("[data-campo]");
     if (!el) return;
     dados.respostas[el.dataset.campo] = el.value;
@@ -631,7 +869,10 @@
 
   document.addEventListener("change", (ev) => {
     const el = ev.target.closest("select[data-campo]");
-    if (el) { dados.respostas[el.dataset.campo] = el.value; salvar(); atualizarBotoes(); }
+    if (el) {
+      dados.respostas[el.dataset.campo] = el.value; salvar(); atualizarBotoes();
+      if (el.dataset.campo === "tema_carrossel") desenharCarrosseis();
+    }
   });
 
   document.addEventListener("keydown", (ev) => {
