@@ -510,6 +510,9 @@
         <small class="dica-cel">Mantenha os marcadores que começam com ### (TITULO, DOR, CONTEUDO...).</small></details>
       <div class="pub">
         <div class="campo"><label for="c-checkout">Link do checkout da Kiwify <span class="obrig">*</span></label><div class="dica">Na Kiwify: Produtos → seu produto → Links → copie o link do checkout.</div><input class="input" id="c-checkout" data-campo="checkout" placeholder="https://pay.kiwify.com.br/..." value="${esc(dados.respostas.checkout || "")}"></div>
+        <div class="campo"><label for="c-hist">Sua história (aparece em “Quem sou eu”)</label><div class="dica">2 ou 3 linhas, em primeira pessoa: o que você viveu e por que criou este produto.</div><textarea class="area" id="c-hist" data-campo="historia_pagina" placeholder="Ex.: Eu vivia cansada e dormia mal. Quando troquei o café da noite por um chá natural, tudo mudou...">${esc(dados.respostas.historia_pagina ?? dados.respostas.vivencia ?? "")}</textarea></div>
+        <div class="campo"><label>Imagem do produto (mockup)</label><div class="dica">Opcional. Sem imagem, a página cria uma capa automática com o nome do produto. Para um mockup mais bonito, crie no Canva (busque por “mockup e-book”) e envie aqui.</div>
+          <div class="prints">${dados.respostas.mockup ? `<figure><img src="data:image/jpeg;base64,${dados.respostas.mockup}" alt="Imagem do produto" style="object-fit:contain;background:#fff"><button class="btn-leve" data-acao="tirar-mockup" aria-label="Tirar imagem">✕</button></figure>` : `<label class="add-print"><input type="file" accept="image/*" data-mockup hidden>${I.baixar}<span>Enviar imagem</span></label>`}</div></div>
         <div class="campo"><label for="c-cor">Cor da página</label><select class="select" id="c-cor" data-campo="cor_pagina">${Object.entries(CORES_PAGINA).map(([k, n]) => `<option value="${k}" ${k === cor ? "selected" : ""}>${n}</option>`).join("")}</select></div>
         <button class="btn btn-pri" data-acao="publicar-pagina" data-id="${id}">${I.brilho} ${slug ? "Atualizar minha página" : "Publicar minha página"}</button>
         ${slug ? `<div class="pag-link"><b>${I.check} Sua página está no ar:</b><input class="input" readonly value="${esc(urlPagina(slug))}" aria-label="Link da página"><div class="linha-acoes"><button class="btn btn-sec" data-acao="copiar-link-pagina">${I.copiar} Copiar link</button><a class="btn btn-sec" href="${esc(urlPagina(slug))}" target="_blank" rel="noopener">Abrir página ${I.seta}</a></div><small class="dica-cel">Coloque este link na sua bio do Instagram.</small></div>` : ""}
@@ -521,9 +524,17 @@
     const checkout = String(dados.respostas.checkout || "").trim();
     if (!/^https:\/\/\S+$/.test(checkout)) return toast("Cole o link do checkout da Kiwify (começa com https://).");
     if (!sec.TITULO) return toast("O texto da página está sem o ### TITULO.");
+    const hist = String(dados.respostas.historia_pagina ?? dados.respostas.vivencia ?? "").trim();
+    if (sec.SOBRE && /\[[^\]]*\]/.test(sec.SOBRE)) {
+      if (!hist) { document.getElementById("c-hist")?.focus(); return toast("Escreva a sua história no campo “Sua história” antes de publicar."); }
+      sec.SOBRE = sec.SOBRE.replace(/\[[^\]]*\]/g, hist);
+    } else if (hist && !sec.SOBRE) sec.SOBRE = hist;
+    const pendentes = Object.entries(sec).filter(([, t]) => /\[[^\]]{3,}\]/.test(t)).map(([k]) => k.toLowerCase());
+    if (pendentes.length) return toast(`Complete os trechos entre [colchetes] no texto da página (${pendentes.join(", ")}).`);
+    if (!sec.BONUS || /^\s*[-*•]?\s*(nenhum|sem b[oô]nus|n[aã]o h[aá])/i.test(sec.BONUS)) delete sec.BONUS;
     let slugAtual = dados.respostas.pagina_slug;
     if (!slugAtual) slugAtual = (slug(dados.respostas.produto || perfil.nome || "minha-pagina").slice(0, 40) || "pagina") + "-" + Math.random().toString(36).slice(2, 6);
-    const conteudo = { secoes: sec, checkout, cor: dados.respostas.cor_pagina || "rosa", produto: dados.respostas.produto || "", autora: perfil.nome || "", arroba: dados.respostas.arroba || "" };
+    const conteudo = { secoes: sec, checkout, cor: dados.respostas.cor_pagina || "rosa", produto: dados.respostas.produto || "", autora: perfil.nome || "", arroba: dados.respostas.arroba || "", mockup: dados.respostas.mockup || "" };
     if (DEMO) { try { localStorage.setItem("sd_pagina_" + slugAtual, JSON.stringify(conteudo)); } catch {} }
     else {
       const { error } = await sb.from("paginas").upsert({ slug: slugAtual, user_id: usuaria.id, dados: conteudo, publicada: true, atualizado_em: new Date().toISOString() });
@@ -733,7 +744,7 @@
   }
 
   // Reduz o print para no máximo 1280px (fica mais rápido e mais barato)
-  function lerPrint(arquivo) {
+  function lerPrint(arquivo, max = 1280) {
     return new Promise((ok, falha) => {
       const leitor = new FileReader();
       leitor.onerror = falha;
@@ -741,7 +752,7 @@
         const img = new Image();
         img.onerror = falha;
         img.onload = () => {
-          const k = Math.min(1, 1280 / Math.max(img.width, img.height));
+          const k = Math.min(1, max / Math.max(img.width, img.height));
           const c = document.createElement("canvas");
           c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
           c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
@@ -793,6 +804,7 @@
         const pos = l.indexOf(i); pos >= 0 ? l.splice(pos, 1) : l.push(i);
         salvar(); return render();
       }
+      case "tirar-mockup": dados.respostas.mockup = ""; salvar(); return render();
       case "tirar-print": prints.splice(Number(el.dataset.i), 1); return render();
       case "salvar-negocio": {
         ["nicho", "arroba", "produto"].forEach((k) => { const c = document.getElementById("c-" + k); if (c) dados.respostas[k] = c.value.trim(); });
@@ -859,6 +871,11 @@
   });
 
   document.addEventListener("change", async (ev) => {
+    if (ev.target.matches("[data-mockup]")) {
+      const a = ev.target.files[0];
+      if (a && a.type.startsWith("image/")) { try { dados.respostas.mockup = (await lerPrint(a, 900)).data; await salvarAgora(); } catch { toast("Não consegui ler a imagem."); } }
+      return render();
+    }
     if (ev.target.matches("[data-prints]")) {
       const arquivos = [...ev.target.files].filter((a) => a.type.startsWith("image/")).slice(0, 5 - prints.length);
       try { for (const a of arquivos) prints.push(await lerPrint(a)); }

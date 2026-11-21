@@ -30,6 +30,12 @@
   .btn:hover{background:var(--ac-esc);transform:translateY(-2px)}
   .seguro{display:block;font-size:13.5px;color:var(--sub);margin-top:12px}
   .dor{font-size:19px}
+  .mockup{margin:34px auto 6px;max-width:340px}
+  .mockup img{width:100%;height:auto;display:block;filter:drop-shadow(0 24px 36px rgba(0,0,0,.18))}
+  .livro{position:relative;width:230px;height:310px;margin:36px auto 10px;border-radius:6px 14px 14px 6px;background:linear-gradient(135deg,var(--ac),var(--ac-esc));color:#fff;padding:34px 26px;text-align:left;box-shadow:inset 10px 0 18px rgba(0,0,0,.25), 18px 24px 40px rgba(0,0,0,.22);transform:perspective(900px) rotateY(-14deg);display:flex;flex-direction:column;justify-content:space-between}
+  .livro::before{content:"";position:absolute;left:12px;top:0;bottom:0;width:2px;background:rgba(255,255,255,.25)}
+  .livro b{font-family:"Playfair Display",Georgia,serif;font-size:24px;line-height:1.15}
+  .livro small{font-size:12px;letter-spacing:.1em;text-transform:uppercase;opacity:.85}
   .caixa{background:var(--bg2);border-radius:20px;padding:30px}
   .garantia{display:flex;gap:20px;align-items:flex-start}
   .selo{flex:none;width:76px;height:76px;border-radius:50%;border:2px solid var(--ac);color:var(--ac);display:grid;place-items:center;font-weight:700;font-size:13px;text-align:center;line-height:1.1}
@@ -58,7 +64,7 @@
     dourado: ["#A9812F", "#86661F", "#F7F0E1"], lilas: ["#7B5EA7", "#604883", "#F0EBF7"],
   };
   const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  const inl = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\[(SUA HIST[ÓO]RIA AQUI|ESPAÇO[^\]]*)\]/gi, "");
+  const inl = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\[[^\]]*\]/g, "");
   function md(t) {
     let html = "", lista = false;
     for (const bruta of String(t || "").split("\n")) {
@@ -95,11 +101,13 @@
         <h1>${inl(s.TITULO)}</h1>
         ${s.SUBTITULO ? `<p class="sub">${inl(s.SUBTITULO)}</p>` : ""}
         ${botao("Quero começar agora")}
+        ${d.mockup ? `<div class="mockup"><img src="data:image/jpeg;base64,${esc(d.mockup)}" alt="${esc(d.produto || "Produto")}"></div>`
+          : `<div class="livro" aria-hidden="true"><b>${esc(d.produto || s.TITULO || "")}</b><small>${esc(d.autora || "")}</small></div>`}
       </div></section>
       ${sec("dor", "", md(s.DOR))}
       ${sec("", "O que muda para você", md(s.VIRADA))}
       ${sec("", "O que você recebe", `<div class="caixa">${md(s.CONTEUDO)}</div>`)}
-      ${sec("", "Bônus", s.BONUS ? `<div class="caixa">${md(s.BONUS)}</div>` : "")}
+      ${sec("", "Bônus", s.BONUS && !/^\s*[-*•]?\s*(nenhum|sem b[oô]nus|n[aã]o h[aá])/i.test(s.BONUS) ? `<div class="caixa">${md(s.BONUS)}</div>` : "")}
       ${sec("", d.autora ? `Quem sou eu: ${esc(d.autora)}` : "Quem sou eu", md(s.SOBRE) + (d.arroba ? `<p><strong>${esc(d.arroba.startsWith("@") ? d.arroba : "@" + d.arroba)}</strong> no Instagram</p>` : ""))}
       ${sec("", "", s.GARANTIA ? `<div class="garantia"><div class="selo">GARANTIA</div><div>${md(s.GARANTIA)}</div></div>` : "")}
       <section class="preco"><div class="wrap"><h2>Comece hoje</h2><div class="valor">${inl((s.PRECO || "").split("\n")[0])}</div>${md((s.PRECO || "").split("\n").slice(1).join("\n"))}${botao("Garantir o meu acesso")}</div></section>
